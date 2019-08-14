@@ -4,8 +4,8 @@
   },
   "scripts": {
     "format": "prettier --write 'src/**/*.ts'",
-    "start": "tsc && probot lib/index.js",
-    "dev": "tsc --watch & nodemon --exec \"probot lib/index.js\""
+    "start": "tsc && probot run lib/index.js",
+    "dev": "tsc --watch & nodemon --exec \"probot run lib/index.js\""
   },
   "dependencies": {
     "probot": "^9.3.1"
