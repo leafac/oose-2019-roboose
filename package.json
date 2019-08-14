@@ -1,0 +1,19 @@
+{
+  "engines": {
+    "node": ">=12.6.0"
+  },
+  "scripts": {
+    "format": "prettier --write 'src/**/*.ts'",
+    "start": "tsc && probot lib/index.js",
+    "dev": "tsc --watch & nodemon --exec \"probot lib/index.js\""
+  },
+  "dependencies": {
+    "probot": "^9.3.1"
+  },
+  "devDependencies": {
+    "nodemon": "^1.19.1",
+    "prettier": "^1.18.2",
+    "smee-client": "^1.1.0",
+    "typescript": "^3.5.3"
+  }
+}
