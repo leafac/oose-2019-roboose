@@ -1,5 +1,5 @@
 import { Command } from "commander";
-import { config } from "dotenv";
+import * as dotenv from "dotenv";
 
 const program = new Command();
 
@@ -10,6 +10,6 @@ program
     console.log(process.env.YEAR);
   });
 
-config();
+dotenv.config();
 if (process.argv.length === 2) process.argv.push("--help");
 program.parse(process.argv);
