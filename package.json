@@ -5,12 +5,15 @@
   "scripts": {
     "format": "prettier --write 'src/**/*.ts'",
     "start": "tsc && probot run lib/server.js",
-    "dev": "tsc --watch & nodemon --exec \"probot run lib/server.js\""
+    "dev": "tsc --watch & nodemon --exec \"probot run lib/server.js\"",
+    "task": "tsc && node lib/tasks.js"
   },
   "dependencies": {
+    "commander": "^3.0.0",
     "probot": "^9.3.1"
   },
   "devDependencies": {
+    "@types/node": "^12.7.1",
     "nodemon": "^1.19.1",
     "prettier": "^1.18.2",
     "smee-client": "^1.1.0",
