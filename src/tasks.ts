@@ -11,7 +11,7 @@ program
   .action(async () => {
     createRepository({
       org: String(process.env.ORG),
-      name: staffRepoName(),
+      name: `${process.env.COURSE}-staff`,
       description:
         "A space for staff to talk, grade assessments, and prepare pedagogical material.",
       private: true,
@@ -19,7 +19,7 @@ program
     });
     createRepository({
       org: String(process.env.ORG),
-      name: studentsRepoName(),
+      name: `${process.env.COURSE}-students`,
       description:
         "A space for students to ask questions (visible to other students), receive announcements, and watch videos of the lectures.",
       private: true,
@@ -39,23 +39,14 @@ async function createRepository(params: Octokit.ReposCreateInOrgParams) {
   }
 }
 
-function staffRepoName() {
-  return `${process.env.COURSE}-staff`;
-}
-
-function studentsRepoName() {
-  return `${process.env.COURSE}-students`;
-}
-
 dotenv.config();
-
-const app = new App({
-  id: Number(process.env.APP_ID),
-  privateKey: String(process.env.PRIVATE_KEY)
-});
 
 const octokit = new Octokit({
   async auth() {
+    const app = new App({
+      id: Number(process.env.APP_ID),
+      privateKey: String(process.env.PRIVATE_KEY)
+    });
     const installationAccessToken = await app.getInstallationAccessToken({
       installationId: Number(process.env.INSTALLATION_ID)
     });
