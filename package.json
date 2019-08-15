@@ -1,7 +1,8 @@
 {
   "scripts": {
     "format": "prettier --write 'src/**/*.ts'",
-    "start": "tsc && probot run lib/server.js",
+    "build": "tsc",
+    "start": "probot run lib/server.js",
     "dev": "tsc --watch & nodemon --exec \"probot run lib/server.js\"",
     "task": "tsc && node lib/tasks.js"
   },
