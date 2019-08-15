@@ -1,10 +1,10 @@
 {
   "scripts": {
     "build": "tsc",
-    "start": "probot run lib/server.js",
+    "start": "probot run ./lib/server.js",
     "task": "node lib/tasks.js",
     "dev:format": "prettier --write 'src/**/*.ts'",
-    "dev:server": "tsc --watch & nodemon --exec \"probot run lib/server.js\"",
+    "dev:server": "tsc --watch & nodemon --exec \"probot run ./lib/server.js\"",
     "dev:task": "tsc && node lib/tasks.js"
   },
   "dependencies": {
