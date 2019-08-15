@@ -3,8 +3,9 @@
     "format": "prettier --write 'src/**/*.ts'",
     "build": "tsc",
     "start": "probot run lib/server.js",
-    "dev": "tsc --watch & nodemon --exec \"probot run lib/server.js\"",
-    "task": "tsc && node lib/tasks.js"
+    "task": "node lib/tasks.js",
+    "dev:server": "tsc --watch & nodemon --exec \"probot run lib/server.js\"",
+    "dev:task": "tsc && node lib/tasks.js"
   },
   "dependencies": {
     "commander": "^3.0.0",
