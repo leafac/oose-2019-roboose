@@ -90,11 +90,11 @@ default_permissions:
 
   # Manage repository projects, columns, and cards.
   # https://developer.github.com/v3/apps/permissions/#permission-on-repository-projects
-  repository_projects: write
+  repository_projects: admin
 
   # Retrieve security vulnerability alerts.
   # https://developer.github.com/v4/object/repositoryvulnerabilityalert/
-  vulnerability_alerts: write
+  vulnerability_alerts: read
 
   # Commit statuses.
   # https://developer.github.com/v3/apps/permissions/#permission-on-statuses
@@ -110,7 +110,7 @@ default_permissions:
 
   # Manage organization projects, columns, and cards.
   # https://developer.github.com/v3/apps/permissions/#permission-on-organization-projects
-  organization_projects: write
+  organization_projects: admin
 
   # Manage team discussions and related comments.
   # https://developer.github.com/v3/apps/permissions/#permission-on-team-discussions
