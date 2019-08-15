@@ -40,11 +40,11 @@ async function createRepository(params: Octokit.ReposCreateInOrgParams) {
 }
 
 function staffRepoName() {
-  return `${process.env.YEAR}-staff`;
+  return `${process.env.COURSE}-staff`;
 }
 
 function studentsRepoName() {
-  return `${process.env.YEAR}-students`;
+  return `${process.env.COURSE}-students`;
 }
 
 dotenv.config();
