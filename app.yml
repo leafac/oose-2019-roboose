@@ -131,7 +131,7 @@ name: Roboose
 url: https://github.com/jhu-oose/roboose
 
 # A description of the GitHub App.
-description: A GitHub Probot in service of Object-Oriented Software Engineering (OOSE), a course at the Johns Hopkins University.
+description: The Robot for OOSE
 
 # Set to true when your GitHub App is available to the public or false when it is only accessible to the owner of the app.
 # Default: true

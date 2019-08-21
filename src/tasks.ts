@@ -13,15 +13,16 @@ program
       org: String(process.env.ORG),
       name: `${process.env.COURSE}-staff`,
       description:
-        "A space for staff to talk, grade assessments, and prepare pedagogical material.",
+        "A space for staff to talk, prepare pedagogical material, and grade assessments",
       private: true,
+      has_projects: false,
       has_wiki: false
     });
     createRepository({
       org: String(process.env.ORG),
       name: `${process.env.COURSE}-students`,
       description:
-        "A space for students to ask questions (visible to other students), receive announcements, and watch videos of the lectures.",
+        "A space for students to ask and answer questions (visible to other students), view announcements, and watch videos of the lectures",
       private: true,
       has_projects: false,
       has_wiki: false
