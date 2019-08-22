@@ -12,7 +12,7 @@ program
     await createRepository({
       org: String(process.env.ORG),
       name: `${process.env.COURSE}-staff`,
-      description: "Forum and grading",
+      description: "Staff forum and grading",
       private: true,
       has_projects: false,
       has_wiki: false
@@ -20,7 +20,7 @@ program
     await createRepository({
       org: String(process.env.ORG),
       name: `${process.env.COURSE}-students`,
-      description: "Forum and videos of lectures",
+      description: "Public forum and videos of lectures",
       private: true,
       has_projects: false,
       has_wiki: false
