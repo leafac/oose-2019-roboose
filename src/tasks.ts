@@ -9,7 +9,7 @@ program
   .command("initialize")
   .description("create the repositories for staff and students")
   .action(async () => {
-    createRepository({
+    await createRepository({
       org: String(process.env.ORG),
       name: `${process.env.COURSE}-staff`,
       description: "Forum and grading",
@@ -17,7 +17,7 @@ program
       has_projects: false,
       has_wiki: false
     });
-    createRepository({
+    await createRepository({
       org: String(process.env.ORG),
       name: `${process.env.COURSE}-students`,
       description: "Forum and videos of lectures",
