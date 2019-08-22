@@ -12,7 +12,7 @@ program
     await createRepository({
       org: String(process.env.ORG),
       name: `${process.env.COURSE}-staff`,
-      description: "Staff forum and grading",
+      description: "Staff forum, grading, and pedagogical material",
       private: true,
       has_projects: false,
       has_wiki: false

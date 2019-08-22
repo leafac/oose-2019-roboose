@@ -12,7 +12,7 @@ A [GitHub Probot](https://probot.github.io) deployed to [Heroku](https://heroku.
 
 ## Repositories
 
-**Staff (\<course\>-staff, for example, [2019-staff](https://github.com/jhu-oose/2019-staff)):** Staff forum and grading.
+**Staff (\<course\>-staff, for example, [2019-staff](https://github.com/jhu-oose/2019-staff)):** Staff forum, grading, and pedagogical material
 
 **Students (\<course\>-students, for example, [2019-students](https://github.com/jhu-oose/2019-students))**: Public forum and videos of lectures.
 
