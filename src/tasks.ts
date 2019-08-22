@@ -12,8 +12,7 @@ program
     createRepository({
       org: String(process.env.ORG),
       name: `${process.env.COURSE}-staff`,
-      description:
-        "A space for staff to talk, prepare pedagogical material, and grade assessments",
+      description: "Forum and grading",
       private: true,
       has_projects: false,
       has_wiki: false
@@ -21,8 +20,7 @@ program
     createRepository({
       org: String(process.env.ORG),
       name: `${process.env.COURSE}-students`,
-      description:
-        "A space for students to ask and answer questions (visible to other students), view announcements, and watch videos of the lectures",
+      description: "Forum and videos of lectures",
       private: true,
       has_projects: false,
       has_wiki: false
