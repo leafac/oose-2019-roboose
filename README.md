@@ -12,13 +12,13 @@ A [GitHub Probot](https://probot.github.io) deployed to [Heroku](https://heroku.
 
 ## Repositories
 
-**Staff (\<course\>-staff, for example, [2019-staff](https://github.com/jhu-oose/2019-staff)):** Staff forum, grading, and pedagogical material
+**Staff (`<course>-staff`, for example, [`2019-staff`](https://github.com/jhu-oose/2019-staff)):** Staff forum, grading, and pedagogical material
 
-**Students (\<course\>-students, for example, [2019-students](https://github.com/jhu-oose/2019-students))**: Public forum and videos of lectures.
+**Students (`<course>-students`, for example, [`2019-students`](https://github.com/jhu-oose/2019-students))**: Public forum and videos of lectures.
 
-**Individual Student (\<course\>-student-\<identifier\>, for example, [2019-student-jhu-oose-fake-student](https://github.com/jhu-oose/2019-student-jhu-oose-fake-student)):** Private forum, assignment submission, and grade delivery.
+**Individual Student (`<course>-student-<identifier>`, for example, [`2019-student-jhu-oose-fake-student`](https://github.com/jhu-oose/2019-student-jhu-oose-fake-student)):** Private forum, assignment submission, and grade delivery.
 
-**Group (\<course\>-group-\<identifier\>, for example, [2019-group-fake-group](https://github.com/jhu-oose/2019-group-fake-group)):** Group project.
+**Group (`<course>-group-<identifier>`, for example, [`2019-group-fake-group`](https://github.com/jhu-oose/2019-group-fake-group)):** Group project.
 
 ## Teams
 
