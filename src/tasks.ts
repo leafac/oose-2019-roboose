@@ -9,43 +9,53 @@ program
   .command("initialize")
   .description("create the repositories for staff and students")
   .action(async () => {
-    await createTeam({
-      org: "jhu-oose",
-      name: `${process.env.COURSE}-students`,
-      privacy: "closed"
-    });
-    await createTeam({
-      org: "jhu-oose",
-      name: `${process.env.COURSE}-staff`,
-      privacy: "closed"
-    });
+    try {
+      await octokit.teams.create({
+        org: "jhu-oose",
+        name: `${process.env.COURSE}-students`,
+        privacy: "closed"
+      });
+    } catch {}
+    try {
+      await octokit.teams.create({
+        org: "jhu-oose",
+        name: `${process.env.COURSE}-staff`,
+        privacy: "closed"
+      });
+    } catch {}
 
-    await createRepository({
-      org: "jhu-oose",
-      name: "instructors",
-      description: "Documentation and credentials",
-      private: true,
-      has_projects: false,
-      has_wiki: false
-    });
-    await createRepository({
-      org: "jhu-oose",
-      name: `${process.env.COURSE}-staff`,
-      description: "Staff forum, grading, and pedagogical material",
-      private: true,
-      has_projects: false,
-      has_wiki: false
-    });
-    await createRepository({
-      org: "jhu-oose",
-      name: `${process.env.COURSE}-students`,
-      description: "Public forum and videos of lectures",
-      private: true,
-      has_projects: false,
-      has_wiki: false
-    });
+    try {
+      await octokit.repos.createInOrg({
+        org: "jhu-oose",
+        name: "instructors",
+        description: "Documentation and credentials",
+        private: true,
+        has_projects: false,
+        has_wiki: false
+      });
+    } catch {}
+    try {
+      await octokit.repos.createInOrg({
+        org: "jhu-oose",
+        name: `${process.env.COURSE}-staff`,
+        description: "Staff forum, grading, and pedagogical material",
+        private: true,
+        has_projects: false,
+        has_wiki: false
+      });
+    } catch {}
+    try {
+      await octokit.repos.createInOrg({
+        org: "jhu-oose",
+        name: `${process.env.COURSE}-students`,
+        description: "Public forum and videos of lectures",
+        private: true,
+        has_projects: false,
+        has_wiki: false
+      });
+    } catch {}
 
-    await grantRepositoryAccessToTeam({
+    await octokit.teams.addOrUpdateRepo({
       team_id: (await octokit.teams.getByName({
         org: "jhu-oose",
         team_slug: `${process.env.COURSE}-staff`
@@ -54,7 +64,7 @@ program
       repo: `${process.env.COURSE}-staff`,
       permission: "push"
     });
-    await grantRepositoryAccessToTeam({
+    await octokit.teams.addOrUpdateRepo({
       team_id: (await octokit.teams.getByName({
         org: "jhu-oose",
         team_slug: `${process.env.COURSE}-staff`
@@ -63,7 +73,7 @@ program
       repo: `${process.env.COURSE}-students`,
       permission: "pull"
     });
-    await grantRepositoryAccessToTeam({
+    await octokit.teams.addOrUpdateRepo({
       team_id: (await octokit.teams.getByName({
         org: "jhu-oose",
         team_slug: `${process.env.COURSE}-students`
@@ -73,43 +83,6 @@ program
       permission: "pull"
     });
   });
-
-async function createRepository(params: Octokit.ReposCreateInOrgParams) {
-  try {
-    await octokit.repos.createInOrg(params);
-    console.log(`Created repository ${params.name}`);
-  } catch (error) {
-    console.log(
-      `Failed to create repository ${params.name} (probably because it already exists): ${error}`
-    );
-  }
-}
-
-async function createTeam(params: Octokit.TeamsCreateParams): Promise<void> {
-  try {
-    await octokit.teams.create(params);
-    console.log(`Created team ${params.name}`);
-  } catch (error) {
-    console.log(
-      `Failed to create team ${params.name} (probably because it already exists): ${error}`
-    );
-  }
-}
-
-async function grantRepositoryAccessToTeam(
-  params: Octokit.TeamsAddOrUpdateRepoParams
-): Promise<void> {
-  try {
-    await octokit.teams.addOrUpdateRepo(params);
-    console.log(
-      `Granted access to repository ${params.repo} to team ${params.team_id}`
-    );
-  } catch (error) {
-    console.log(
-      `Failed to grant access to repository ${params.repo} to team ${params.team_id}: ${error}`
-    );
-  }
-}
 
 dotenv.config();
 
