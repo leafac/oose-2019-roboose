@@ -11,6 +11,14 @@ program
   .action(async () => {
     await createRepository({
       org: "jhu-oose",
+      name: "instructors",
+      description: "Documentation and credentials",
+      private: true,
+      has_projects: false,
+      has_wiki: false
+    });
+    await createRepository({
+      org: "jhu-oose",
       name: `${process.env.COURSE}-staff`,
       description: "Staff forum, grading, and pedagogical material",
       private: true,
