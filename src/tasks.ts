@@ -10,7 +10,7 @@ program
   .description("create the repositories for staff and students")
   .action(async () => {
     await createRepository({
-      org: String(process.env.ORG),
+      org: "jhu-oose",
       name: `${process.env.COURSE}-staff`,
       description: "Staff forum, grading, and pedagogical material",
       private: true,
@@ -18,7 +18,7 @@ program
       has_wiki: false
     });
     await createRepository({
-      org: String(process.env.ORG),
+      org: "jhu-oose",
       name: `${process.env.COURSE}-students`,
       description: "Public forum and videos of lectures",
       private: true,
