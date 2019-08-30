@@ -1,6 +1,6 @@
 # Roboose
 
-[**The Robot for OOSE**](https://github.com/apps/roboose)
+**The [Robot](https://github.com/apps/roboose) for [OOSE](https://www.jhu-oose.com)**
 
 <img alt="Roboose" src="avatar.png" width="600">
 
