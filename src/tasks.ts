@@ -84,6 +84,26 @@ program
     });
   });
 
+program
+  .command("initialize:student-registration")
+  .description("create issue in which to store student data")
+  .action(async () => {
+    const studentRegistration = await octokit.issues.create({
+      owner: "jhu-oose",
+      repo: `${process.env.COURSE}-staff`,
+      title: "Student registration",
+      labels: ["data"]
+    });
+    console.log(
+      `Issue for student registration created with id ${studentRegistration.data.id}`
+    );
+  });
+
+program
+  .command("one-off")
+  .description("hack task to run locally (never commit changes to this)")
+  .action(async () => {});
+
 dotenv.config();
 
 const octokit = new Octokit({

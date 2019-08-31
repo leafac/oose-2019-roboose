@@ -8,6 +8,17 @@
 
 A [GitHub Probot](https://probot.github.io) deployed to [Heroku](https://heroku.com).
 
+Besides running the probot, you may also run tasks using:
+
+```console
+$ npm run build
+$ npm run task <task>
+```
+
+Run just `npm run task` to see the available tasks.
+
+You may skip the `npm run build` step if you replace `npm run task` with `npm run dev:task`.
+
 # GitHub Infrastructure
 
 ## Repositories
@@ -18,7 +29,7 @@ A [GitHub Probot](https://probot.github.io) deployed to [Heroku](https://heroku.
 
 **Students (`<course>-students`, for example, [`2019-students`](https://github.com/jhu-oose/2019-students))**: Public forum and videos of lectures.
 
-**Individual Student (`<course>-student-<identifier>`, for example, [`2019-student-jhu-oose-fake-student`](https://github.com/jhu-oose/2019-student-jhu-oose-fake-student)):** Private forum, assignment submission, and grade delivery.
+**Individual Student (`<course>-student-<identifier>`, for example, [`2019-student-jhu-oose-fake-student`](https://github.com/jhu-oose/2019-student-jhu-oose-fake-student)):** Private forum and individual assignments.
 
 **Group (`<course>-group-<identifier>`, for example, [`2019-group-fake-group`](https://github.com/jhu-oose/2019-group-fake-group)):** Group project.
 
