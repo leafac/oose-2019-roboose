@@ -27,7 +27,7 @@ You may skip the `npm run build` step if you replace `npm run task` with `npm ru
 
 **Staff (`<course>-staff`, for example, [`2019-staff`](https://github.com/jhu-oose/2019-staff)):** Staff forum, grading, and pedagogical material
 
-**Students (`<course>-students`, for example, [`2019-students`](https://github.com/jhu-oose/2019-students))**: Public forum and videos of lectures.
+**Students (`<course>-students`, for example, [`2019-students`](https://github.com/jhu-oose/2019-students))**: Public forum and lectures videos.
 
 **Individual Student (`<course>-student-<identifier>`, for example, [`2019-student-jhu-oose-fake-student`](https://github.com/jhu-oose/2019-student-jhu-oose-fake-student)):** Private forum and individual assignments.
 

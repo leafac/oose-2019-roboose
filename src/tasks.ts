@@ -48,7 +48,7 @@ program
       await octokit.repos.createInOrg({
         org: "jhu-oose",
         name: `${process.env.COURSE}-students`,
-        description: "Public forum and videos of lectures",
+        description: "Public forum and lectures videos",
         private: true,
         has_projects: false,
         has_wiki: false
