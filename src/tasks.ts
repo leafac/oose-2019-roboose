@@ -94,9 +94,7 @@ program
       title: "Student registration",
       labels: ["data"]
     });
-    console.log(
-      `Issue for student registration created with id ${studentRegistration.data.id}`
-    );
+    console.log(`ISSUE_ID_STUDENT_REGISTRATION=${studentRegistration.data.id}`);
   });
 
 program
