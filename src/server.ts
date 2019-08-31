@@ -53,7 +53,7 @@ ${JSON.stringify(req.body, undefined, 2)}
         repo: `${process.env.COURSE}-student-${github}`,
         username: github
       });
-      octokit.repos.createOrUpdateFile({
+      await octokit.repos.createOrUpdateFile({
         owner: "jhu-oose",
         repo: `${process.env.COURSE}-student-${github}`,
         path: "README.md",
@@ -64,7 +64,7 @@ ${JSON.stringify(req.body, undefined, 2)}
           path: "templates/README.md"
         })).data.content
       });
-      octokit.repos.createOrUpdateFile({
+      await octokit.repos.createOrUpdateFile({
         owner: "jhu-oose",
         repo: `${process.env.COURSE}-student-${github}`,
         path: "assignments/0.md",
