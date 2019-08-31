@@ -16,7 +16,7 @@ export = (app: Application) => {
       await octokit.issues.createComment({
         owner: "jhu-oose",
         repo: `${process.env.COURSE}-staff`,
-        issue_number: Number(process.env.ISSUE_ID_STUDENT_REGISTRATION),
+        issue_number: Number(process.env.ISSUE_STUDENTS),
         body: `
 \`\`\`json
 ${JSON.stringify(req.body, undefined, 2)}

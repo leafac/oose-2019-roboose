@@ -85,17 +85,35 @@ program
   });
 
 program
-  .command("initialize:student-registration")
-  .description("create issue in which to store student data")
+  .command("students:initialize")
+  .description("create issue in which to store students data")
   .action(async () => {
     const studentRegistration = await octokit.issues.create({
       owner: "jhu-oose",
       repo: `${process.env.COURSE}-staff`,
-      title: "Student registration",
+      title: "Students",
       labels: ["data"]
     });
-    console.log(`ISSUE_ID_STUDENT_REGISTRATION=${studentRegistration.data.id}`);
+    console.log(`ISSUE_STUDENTS=${studentRegistration.data.id}`);
   });
+
+program.command("students:delete <github>").action(async github => {
+  console.log(
+    `You must manually remove the comment for the student in https://github.com/jhu-oose/${process.env.COURSE}-staff/issues/${process.env.ISSUE_STUDENTS}`
+  );
+  try {
+    await octokit.orgs.removeMember({
+      org: "jhu-oose",
+      username: github
+    });
+  } catch {}
+  try {
+    await octokit.repos.delete({
+      owner: "jhu-oose",
+      repo: `${process.env.COURSE}-student-${github}`
+    });
+  } catch {}
+});
 
 program
   .command("one-off")
