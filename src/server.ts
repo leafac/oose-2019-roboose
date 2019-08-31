@@ -1,70 +1,103 @@
+import { App } from "@octokit/app";
+import * as Octokit from "@octokit/rest";
+import * as express from "express";
 import { Application } from "probot";
 
 export = (app: Application) => {
-  const router = app.route();
+  const router: express.Router = app.route("/roboose");
 
-  //   router.post("/students", (req, res) => {
-  //     await octokit.issues.createComment({
-  //       owner: "jhu-oose",
-  //       repo: `${process.env.COURSE}-staff`,
-  //       issue_number: Number(process.env.ISSUE_ID_STUDENT_REGISTRATION),
-  //       body: `
-  // \`\`\`json
-  // ${JSON.stringify(req.params, undefined, 2)}
-  // \`\`\`
-  //       `
-  //     });
-  //     await octokit.teams.addOrUpdateMembership({
-  //       team_id: (await octokit.teams.getByName({
-  //         org: "jhu-oose",
-  //         team_slug: `${process.env.COURSE}-students`
-  //       })).data.id,
-  //       username: req.params.github,
-  //       role: "member"
-  //     });
-  //     await octokit.repos.createInOrg({
-  //       org: "jhu-oose",
-  //       name: `${process.env.COURSE}-student-${req.params.github}`,
-  //       description: "Private forum and individual assignments",
-  //       private: true,
-  //       has_projects: false,
-  //       has_wiki: false
-  //     });
-  //     await octokit.teams.addOrUpdateRepo({
-  //       team_id: (await octokit.teams.getByName({
-  //         org: "jhu-oose",
-  //         team_slug: `${process.env.COURSE}-staff`
-  //       })).data.id,
-  //       owner: "jhu-oose",
-  //       repo: `${process.env.COURSE}-student-${req.params.github}`,
-  //       permission: "push"
-  //     });
-  //     await octokit.repos.addCollaborator({
-  //       owner: "jhu-oose",
-  //       repo: `${process.env.COURSE}-student-${req.params.github}`,
-  //       username: req.params.github
-  //     });
-  //     octokit.repos.createOrUpdateFile({
-  //       owner: "jhu-oose",
-  //       repo: `${process.env.COURSE}-student-${req.params.github}`,
-  //       path: "README.md",
-  //       message: "Add README.md template",
-  //       content: (await octokit.repos.getContents({
-  //         owner: "jhu-oose",
-  //         repo: `${process.env.COURSE}-staff`,
-  //         path: "templates/README.md"
-  //       })).data.content
-  //     });
-  //     octokit.repos.createOrUpdateFile({
-  //       owner: "jhu-oose",
-  //       repo: `${process.env.COURSE}-student-${req.params.github}`,
-  //       path: "assignments/0.md",
-  //       message: "Add Assignment 0 template",
-  //       content: (await octokit.repos.getContents({
-  //         owner: "jhu-oose",
-  //         repo: `${process.env.COURSE}-staff`,
-  //         path: "templates/assignments/0.md"
-  //       })).data.content
-  //     });
-  //   });
+  router.use(express.urlencoded());
+
+  router.post("/students", async (req, res) => {
+    try {
+      const { github, hopkins } = req.body;
+      if (github === undefined || hopkins === undefined) throw null;
+      const octokit = newInstallationOctokit();
+      await octokit.issues.createComment({
+        owner: "jhu-oose",
+        repo: `${process.env.COURSE}-staff`,
+        issue_number: Number(process.env.ISSUE_ID_STUDENT_REGISTRATION),
+        body: `
+\`\`\`json
+${JSON.stringify(req.body, undefined, 2)}
+\`\`\`
+`
+      });
+      await octokit.teams.addOrUpdateMembership({
+        team_id: (await octokit.teams.getByName({
+          org: "jhu-oose",
+          team_slug: `${process.env.COURSE}-students`
+        })).data.id,
+        username: github,
+        role: "member"
+      });
+      await octokit.repos.createInOrg({
+        org: "jhu-oose",
+        name: `${process.env.COURSE}-student-${github}`,
+        description: "Private forum and individual assignments",
+        private: true,
+        has_projects: false,
+        has_wiki: false
+      });
+      await octokit.teams.addOrUpdateRepo({
+        team_id: (await octokit.teams.getByName({
+          org: "jhu-oose",
+          team_slug: `${process.env.COURSE}-staff`
+        })).data.id,
+        owner: "jhu-oose",
+        repo: `${process.env.COURSE}-student-${github}`,
+        permission: "push"
+      });
+      await octokit.repos.addCollaborator({
+        owner: "jhu-oose",
+        repo: `${process.env.COURSE}-student-${github}`,
+        username: github
+      });
+      octokit.repos.createOrUpdateFile({
+        owner: "jhu-oose",
+        repo: `${process.env.COURSE}-student-${github}`,
+        path: "README.md",
+        message: "Add README.md template",
+        content: (await octokit.repos.getContents({
+          owner: "jhu-oose",
+          repo: `${process.env.COURSE}-staff`,
+          path: "templates/README.md"
+        })).data.content
+      });
+      octokit.repos.createOrUpdateFile({
+        owner: "jhu-oose",
+        repo: `${process.env.COURSE}-student-${github}`,
+        path: "assignments/0.md",
+        message: "Add Assignment 0 template",
+        content: (await octokit.repos.getContents({
+          owner: "jhu-oose",
+          repo: `${process.env.COURSE}-staff`,
+          path: "templates/assignments/0.md"
+        })).data.content
+      });
+      res.redirect(
+        "https://www.jhu-oose.com/assignments/0/student-registration"
+      );
+    } catch (error) {
+      console.error(error);
+      return res.redirect(
+        "https://www.jhu-oose.com/assignments/0/student-registration/error"
+      );
+    }
+  });
 };
+
+function newInstallationOctokit(): Octokit {
+  return new Octokit({
+    async auth() {
+      const app = new App({
+        id: Number(process.env.APP_ID),
+        privateKey: String(process.env.PRIVATE_KEY)
+      });
+      const installationAccessToken = await app.getInstallationAccessToken({
+        installationId: Number(process.env.INSTALLATION_ID)
+      });
+      return `token ${installationAccessToken}`;
+    }
+  });
+}
