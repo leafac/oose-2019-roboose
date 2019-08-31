@@ -6,7 +6,7 @@ import { Application } from "probot";
 export = (app: Application) => {
   const router: express.Router = app.route("/roboose");
 
-  router.use(express.urlencoded());
+  router.use(express.urlencoded({ extended: true }));
 
   router.post("/students", async (req, res) => {
     try {
