@@ -71,7 +71,7 @@ program
       })).data.id,
       owner: "jhu-oose",
       repo: `${process.env.COURSE}-students`,
-      permission: "pull"
+      permission: "push"
     });
     await octokit.teams.addOrUpdateRepo({
       team_id: (await octokit.teams.getByName({
