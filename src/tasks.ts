@@ -1,7 +1,9 @@
 import { App } from "@octokit/app";
-import * as Octokit from "@octokit/rest";
+import pluginRetry from "@octokit/plugin-retry";
+import pluginThrottling from "@octokit/plugin-throttling";
+import Octokit from "@octokit/rest";
 import { Command } from "commander";
-import * as dotenv from "dotenv";
+import dotenv from "dotenv";
 
 const program = new Command();
 
@@ -9,6 +11,7 @@ program
   .command("initialize")
   .description("create the repositories for staff and students")
   .action(async () => {
+    const octokit = robooseOctokit();
     try {
       await octokit.teams.create({
         org: "jhu-oose",
@@ -88,6 +91,7 @@ program
   .command("students:initialize")
   .description("create issue in which to store students data")
   .action(async () => {
+    const octokit = robooseOctokit();
     const studentRegistration = await octokit.issues.create({
       owner: "jhu-oose",
       repo: `${process.env.COURSE}-staff`,
@@ -98,6 +102,7 @@ program
   });
 
 program.command("students:delete <github>").action(async github => {
+  const octokit = robooseOctokit();
   console.log(
     `You must manually remove the comment for the student in https://github.com/jhu-oose/${process.env.COURSE}-staff/issues/${process.env.ISSUE_STUDENTS}`
   );
@@ -121,22 +126,30 @@ program.command("students:delete <github>").action(async github => {
 program
   .command("one-off")
   .description("hack task to run locally (never commit changes to this)")
-  .action(async () => {});
+  .action(async () => {
+    const octokit = robooseOctokit();
+  });
 
 dotenv.config();
 
-const octokit = new Octokit({
-  async auth() {
-    const app = new App({
-      id: Number(process.env.APP_ID),
-      privateKey: String(process.env.PRIVATE_KEY)
-    });
-    const installationAccessToken = await app.getInstallationAccessToken({
-      installationId: Number(process.env.INSTALLATION_ID)
-    });
-    return `token ${installationAccessToken}`;
-  }
-});
+function robooseOctokit(): Octokit {
+  return new (Octokit.plugin([pluginThrottling, pluginRetry]))({
+    async auth() {
+      const app = new App({
+        id: Number(process.env.APP_ID),
+        privateKey: String(process.env.PRIVATE_KEY)
+      });
+      const installationAccessToken = await app.getInstallationAccessToken({
+        installationId: Number(process.env.INSTALLATION_ID)
+      });
+      return `token ${installationAccessToken}`;
+    },
+    throttle: {
+      onRateLimit: () => true,
+      onAbuseLimit: () => true
+    }
+  });
+}
 
 program.command("*").action(() => {
   program.help();

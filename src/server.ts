@@ -1,6 +1,8 @@
 import { App } from "@octokit/app";
-import * as Octokit from "@octokit/rest";
-import * as express from "express";
+import pluginRetry from "@octokit/plugin-retry";
+import pluginThrottling from "@octokit/plugin-throttling";
+import Octokit from "@octokit/rest";
+import express from "express";
 import { Application } from "probot";
 
 export = (app: Application) => {
@@ -12,7 +14,7 @@ export = (app: Application) => {
     try {
       const { github, hopkins } = req.body;
       if (github === undefined || hopkins === undefined) throw null;
-      const octokit = newInstallationOctokit();
+      const octokit = robooseOctokit();
       await octokit.issues.createComment({
         owner: "jhu-oose",
         repo: `${process.env.COURSE}-staff`,
@@ -87,8 +89,8 @@ ${JSON.stringify(req.body, undefined, 2)}
   });
 };
 
-function newInstallationOctokit(): Octokit {
-  return new Octokit({
+function robooseOctokit(): Octokit {
+  return new (Octokit.plugin([pluginThrottling, pluginRetry]))({
     async auth() {
       const app = new App({
         id: Number(process.env.APP_ID),
@@ -98,6 +100,10 @@ function newInstallationOctokit(): Octokit {
         installationId: Number(process.env.INSTALLATION_ID)
       });
       return `token ${installationAccessToken}`;
+    },
+    throttle: {
+      onRateLimit: () => true,
+      onAbuseLimit: () => true
     }
   });
 }
