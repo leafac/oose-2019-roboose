@@ -8,7 +8,9 @@
 
 A [GitHub Probot](https://probot.github.io) deployed to [Heroku](https://heroku.com).
 
-Besides running the probot, you may also run tasks using:
+Roboose automates and serves as runnable documentation for the workflows used to run [OOSE](https://www.jhu-oose.com). 
+
+Besides running the Probot, you may also run tasks using:
 
 ```console
 $ npm run build
@@ -18,6 +20,8 @@ $ npm run task <task>
 Run just `npm run task` to see the available tasks.
 
 You may skip the `npm run build` step if you replace `npm run task` with `npm run dev:task`.
+
+Roboose is a Probot that not only responds to GitHub events, but also has an [user interface of its own](https://jasonet.co/posts/probot-with-ui/).
 
 # GitHub Infrastructure
 
