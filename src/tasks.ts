@@ -123,6 +123,29 @@ program.command("students:delete <github>").action(async github => {
   } catch {}
 });
 
+program.command("students:check").action(async () => {
+  const octokit = robooseOctokit();
+  const studentsIssues = await octokit.paginate(
+    octokit.issues.listComments.endpoint.merge({
+      owner: "jhu-oose",
+      repo: `${process.env.COURSE}-staff`,
+      issue_number: Number(process.env.ISSUE_STUDENTS)
+    })
+  );
+  for (const studentIssue of studentsIssues) {
+    const { github, hopkins } = parse(studentIssue.body);
+    try {
+      await octokit.repos.getContents({
+        owner: "jhu-oose",
+        repo: `${process.env.COURSE}-student-${github}`,
+        path: "assignments/0.md"
+      });
+    } catch (error) {
+      console.log(`Error with student ${github}: ${error}`);
+    }
+  }
+});
+
 program
   .command("one-off")
   .description("hack task to run locally (never commit changes to this)")
@@ -149,6 +172,15 @@ function robooseOctokit(): Octokit {
       onAbuseLimit: () => true
     }
   });
+}
+
+function parse(issueBody: string): any {
+  return JSON.parse(
+    issueBody
+      .trim()
+      .replace(/^```json/, "")
+      .replace(/```$/, "")
+  );
 }
 
 program.command("*").action(() => {
