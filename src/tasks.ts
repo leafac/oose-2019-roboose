@@ -12,51 +12,41 @@ program
   .description("create the repositories for staff and students")
   .action(async () => {
     const octokit = robooseOctokit();
-    try {
-      await octokit.teams.create({
-        org: "jhu-oose",
-        name: `${process.env.COURSE}-students`,
-        privacy: "closed"
-      });
-    } catch {}
-    try {
-      await octokit.teams.create({
-        org: "jhu-oose",
-        name: `${process.env.COURSE}-staff`,
-        privacy: "closed"
-      });
-    } catch {}
+    await octokit.teams.create({
+      org: "jhu-oose",
+      name: `${process.env.COURSE}-students`,
+      privacy: "closed"
+    });
+    await octokit.teams.create({
+      org: "jhu-oose",
+      name: `${process.env.COURSE}-staff`,
+      privacy: "closed"
+    });
 
-    try {
-      await octokit.repos.createInOrg({
-        org: "jhu-oose",
-        name: "instructors",
-        description: "Documentation and credentials",
-        private: true,
-        has_projects: false,
-        has_wiki: false
-      });
-    } catch {}
-    try {
-      await octokit.repos.createInOrg({
-        org: "jhu-oose",
-        name: `${process.env.COURSE}-staff`,
-        description: "Staff forum, grading, and pedagogical material",
-        private: true,
-        has_projects: false,
-        has_wiki: false
-      });
-    } catch {}
-    try {
-      await octokit.repos.createInOrg({
-        org: "jhu-oose",
-        name: `${process.env.COURSE}-students`,
-        description: "Public forum and lectures videos",
-        private: true,
-        has_projects: false,
-        has_wiki: false
-      });
-    } catch {}
+    await octokit.repos.createInOrg({
+      org: "jhu-oose",
+      name: "instructors",
+      description: "Documentation and credentials",
+      private: true,
+      has_projects: false,
+      has_wiki: false
+    });
+    await octokit.repos.createInOrg({
+      org: "jhu-oose",
+      name: `${process.env.COURSE}-staff`,
+      description: "Staff forum, grading, and pedagogical material",
+      private: true,
+      has_projects: false,
+      has_wiki: false
+    });
+    await octokit.repos.createInOrg({
+      org: "jhu-oose",
+      name: `${process.env.COURSE}-students`,
+      description: "Public forum and lectures videos",
+      private: true,
+      has_projects: false,
+      has_wiki: false
+    });
 
     await octokit.teams.addOrUpdateRepo({
       team_id: (await octokit.teams.getByName({
@@ -85,20 +75,67 @@ program
       repo: `${process.env.COURSE}-students`,
       permission: "pull"
     });
-  });
 
-program
-  .command("students:initialize")
-  .description("create issue in which to store students data")
-  .action(async () => {
-    const octokit = robooseOctokit();
-    const studentRegistration = await octokit.issues.create({
-      owner: "jhu-oose",
-      repo: `${process.env.COURSE}-staff`,
-      title: "Students",
-      labels: ["data"]
-    });
-    console.log(`ISSUE_STUDENTS=${studentRegistration.data.id}`);
+    console.log(
+      `ISSUE_STUDENTS=${
+        (await octokit.issues.create({
+          owner: "jhu-oose",
+          repo: `${process.env.COURSE}-staff`,
+          title: "Students",
+          labels: ["data"]
+        })).data.number
+      }`
+    );
+    console.log(
+      `ISSUE_ASSIGNMENTS=${
+        (await octokit.issues.create({
+          owner: "jhu-oose",
+          repo: `${process.env.COURSE}-staff`,
+          title: "Assignments",
+          labels: ["data"]
+        })).data.number
+      }`
+    );
+    console.log(
+      `ISSUE_FEEDBACK=${
+        (await octokit.issues.create({
+          owner: "jhu-oose",
+          repo: `${process.env.COURSE}-staff`,
+          title: "Feedback",
+          labels: ["data"]
+        })).data.number
+      }`
+    );
+    console.log(
+      `ISSUE_GROUPS=${
+        (await octokit.issues.create({
+          owner: "jhu-oose",
+          repo: `${process.env.COURSE}-staff`,
+          title: "Groups",
+          labels: ["data"]
+        })).data.number
+      }`
+    );
+    console.log(
+      `ISSUE_ITERATIONS=${
+        (await octokit.issues.create({
+          owner: "jhu-oose",
+          repo: `${process.env.COURSE}-staff`,
+          title: "Iterations",
+          labels: ["data"]
+        })).data.number
+      }`
+    );
+    console.log(
+      `ISSUE_SELF_REVIEWS=${
+        (await octokit.issues.create({
+          owner: "jhu-oose",
+          repo: `${process.env.COURSE}-staff`,
+          title: "Self Reviews",
+          labels: ["data"]
+        })).data.number
+      }`
+    );
   });
 
 program.command("students:delete <github>").action(async github => {

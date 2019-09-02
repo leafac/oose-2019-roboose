@@ -82,9 +82,22 @@ ${JSON.stringify(req.body, undefined, 2)}
       );
     } catch (error) {
       console.error(error);
-      return res.redirect(
+      res.redirect(
         "https://www.jhu-oose.com/assignments/0/student-registration/error"
       );
+    }
+  });
+
+  router.post("/assignments", async (req, res) => {
+    // TODO: Check commit existence.
+    // TODO: Record the submission time.
+    // TODO: Include assignment number in both entries (assignment and feedback).
+    try {
+      console.log(JSON.stringify(req.body));
+      res.redirect("https://www.jhu-oose.com/assignments/submission");
+    } catch (error) {
+      console.error(error);
+      res.redirect("https://www.jhu-oose.com/assignments/submission/error");
     }
   });
 };
