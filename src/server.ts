@@ -13,7 +13,8 @@ export = (app: Application) => {
   router.post("/students", async (req, res) => {
     try {
       const { github, hopkins } = req.body;
-      if (github === undefined || hopkins === undefined) throw null;
+      if (github === undefined || hopkins === undefined)
+        throw "Incomplete form";
       const octokit = robooseOctokit();
       await octokit.issues.createComment({
         owner: "jhu-oose",
@@ -85,15 +86,37 @@ export = (app: Application) => {
   });
 
   router.post("/assignments", async (req, res) => {
-    // TODO: Submit feedback:
-    //       - Include assignment number.
-    //       - Exclude github and commit.
-    // TODO: Submit assignment:
-    //       - Check commit existence.
-    //       - Include assignment number.
-    //       - Include time.
     try {
-      console.log(JSON.stringify(req.body));
+      const { assignment, github, commit, feedback } = req.body;
+      if (
+        assignment === undefined ||
+        github === undefined ||
+        commit === undefined
+      )
+        throw "Incomplete form";
+      const octokit = robooseOctokit();
+      await octokit.issues.createComment({
+        owner: "jhu-oose",
+        repo: `${process.env.COURSE}-staff`,
+        issue_number: Number(process.env.ISSUE_FEEDBACKS),
+        body: serialize({ assignment, feedback })
+      });
+      await octokit.repos.getCommit({
+        owner: "jhu-oose",
+        repo: `${process.env.COURSE}-student-${github}`,
+        ref: commit
+      });
+      await octokit.issues.createComment({
+        owner: "jhu-oose",
+        repo: `${process.env.COURSE}-staff`,
+        issue_number: Number(process.env.ISSUE_ASSIGNMENTS),
+        body: serialize({
+          assignment,
+          github,
+          commit,
+          time: new Date()
+        })
+      });
       res.redirect("https://www.jhu-oose.com/assignments/submission");
     } catch (error) {
       console.error(error);
