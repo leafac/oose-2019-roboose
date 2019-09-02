@@ -97,11 +97,11 @@ program
       }`
     );
     console.log(
-      `ISSUE_FEEDBACK=${
+      `ISSUE_FEEDBACKS=${
         (await octokit.issues.create({
           owner: "jhu-oose",
           repo: `${process.env.COURSE}-staff`,
-          title: "Feedback",
+          title: "Feedbacks",
           labels: ["data"]
         })).data.number
       }`
