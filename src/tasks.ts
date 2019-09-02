@@ -170,7 +170,7 @@ program.command("students:check").action(async () => {
     })
   );
   for (const studentIssue of studentsIssues) {
-    const { github, hopkins } = parse(studentIssue.body);
+    const { github, hopkins } = unserialize(studentIssue.body);
     try {
       await octokit.repos.getContents({
         owner: "jhu-oose",
@@ -211,7 +211,7 @@ function robooseOctokit(): Octokit {
   });
 }
 
-function parse(issueBody: string): any {
+function unserialize(issueBody: string): any {
   return JSON.parse(
     issueBody
       .trim()

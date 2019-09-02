@@ -19,11 +19,7 @@ export = (app: Application) => {
         owner: "jhu-oose",
         repo: `${process.env.COURSE}-staff`,
         issue_number: Number(process.env.ISSUE_STUDENTS),
-        body: `
-\`\`\`json
-${JSON.stringify(req.body, undefined, 2)}
-\`\`\`
-`
+        body: serialize(req.body)
       });
       await octokit.teams.addOrUpdateMembership({
         team_id: (await octokit.teams.getByName({
@@ -89,9 +85,13 @@ ${JSON.stringify(req.body, undefined, 2)}
   });
 
   router.post("/assignments", async (req, res) => {
-    // TODO: Check commit existence.
-    // TODO: Record the submission time.
-    // TODO: Include assignment number in both entries (assignment and feedback).
+    // TODO: Submit feedback:
+    //       - Include assignment number.
+    //       - Exclude github and commit.
+    // TODO: Submit assignment:
+    //       - Check commit existence.
+    //       - Include assignment number.
+    //       - Include time.
     try {
       console.log(JSON.stringify(req.body));
       res.redirect("https://www.jhu-oose.com/assignments/submission");
@@ -119,4 +119,11 @@ function robooseOctokit(): Octokit {
       onAbuseLimit: () => true
     }
   });
+}
+
+function serialize(data: any): string {
+  return `\`\`\`json
+${JSON.stringify(data, undefined, 2)}
+\`\`\`
+`;
 }
