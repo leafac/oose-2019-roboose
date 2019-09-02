@@ -141,7 +141,7 @@ program
 program.command("students:delete <github>").action(async github => {
   const octokit = robooseOctokit();
   console.log(
-    `You must manually remove the comment for the student in https://github.com/jhu-oose/${process.env.COURSE}-staff/issues/${process.env.ISSUE_STUDENTS}`
+    `You must manually remove the student data from https://github.com/jhu-oose/${process.env.COURSE}-staff/issues/${process.env.ISSUE_STUDENTS}`
   );
   console.log(
     `You may need to cancel the invitation manually at https://github.com/orgs/jhu-oose/people (there’s no endpoint in the GitHub API to automate this)`
