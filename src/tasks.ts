@@ -144,7 +144,7 @@ program.command("students:delete <github>").action(async github => {
     `You must manually remove the student data from https://github.com/jhu-oose/${process.env.COURSE}-staff/issues/${process.env.ISSUE_STUDENTS}`
   );
   console.log(
-    `You may need to cancel the invitation manually at https://github.com/orgs/jhu-oose/people (there’s no endpoint in the GitHub API to automate this)`
+    `You may need to cancel the invitation manually at https://github.com/orgs/jhu-oose/people if the student you’re deleting hasn’t accepted it yet (there’s no endpoint in the GitHub API to automate this)`
   );
   try {
     await octokit.orgs.removeMember({
