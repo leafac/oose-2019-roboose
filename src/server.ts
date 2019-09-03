@@ -35,7 +35,6 @@ export = (app: Application) => {
         name: `${process.env.COURSE}-student-${github}`,
         description: "Private forum and individual assignments",
         private: true,
-        has_projects: false,
         has_wiki: false
       });
       await octokit.teams.addOrUpdateRepo({
