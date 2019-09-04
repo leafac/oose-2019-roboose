@@ -184,6 +184,27 @@ program.command("students:check").action(async () => {
 });
 
 program
+  .command("assignments:submit <assignment> <github> <commit> <time>")
+  .action(async (assignment, github, commit, time) => {
+    const octokit = robooseOctokit();
+    await octokit.repos.getCommit({
+      owner: "jhu-oose",
+      repo: `${process.env.COURSE}-student-${github}`,
+      ref: commit
+    });
+    await octokit.issues.createComment({
+      owner: "jhu-oose",
+      repo: `${process.env.COURSE}-staff`,
+      issue_number: Number(process.env.ISSUE_ASSIGNMENTS),
+      body: serialize({ assignment, github, commit, time: new Date(time) })
+    });
+
+    console.log(
+      `You may want to reply to the student with “Thanks for reaching out to us. Your assignment was submitted now.”`
+    );
+  });
+
+program
   .command("one-off")
   .description("hack task to run locally (never commit changes to this)")
   .action(async () => {
@@ -209,6 +230,13 @@ function robooseOctokit(): Octokit {
       onAbuseLimit: () => true
     }
   });
+}
+
+function serialize(data: any): string {
+  return `\`\`\`json
+${JSON.stringify(data, undefined, 2)}
+\`\`\`
+`;
 }
 
 function unserialize(issueBody: string): any {
