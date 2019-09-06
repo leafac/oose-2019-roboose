@@ -73,6 +73,17 @@ export = (app: Application) => {
           path: "templates/assignments/0.md"
         })).data.content
       });
+      await octokit.repos.createOrUpdateFile({
+        owner: "jhu-oose",
+        repo: `${process.env.COURSE}-student-${github}`,
+        path: "assignments/1.md",
+        message: "Add Assignment 1 template",
+        content: (await octokit.repos.getContents({
+          owner: "jhu-oose",
+          repo: `${process.env.COURSE}-staff`,
+          path: "templates/assignments/1.md"
+        })).data.content
+      });
       res.redirect(
         "https://www.jhu-oose.com/assignments/0/student-registration"
       );
@@ -100,9 +111,10 @@ export = (app: Application) => {
         issue_number: Number(process.env.ISSUE_FEEDBACKS),
         body: serialize({ assignment, feedback })
       });
-      await octokit.repos.getCommit({
+      await octokit.repos.getContents({
         owner: "jhu-oose",
         repo: `${process.env.COURSE}-student-${github}`,
+        path: `assignments/${assignment}.md`,
         ref: commit
       });
       await octokit.issues.createComment({

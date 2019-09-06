@@ -160,7 +160,7 @@ program.command("students:delete <github>").action(async github => {
   } catch {}
 });
 
-program.command("students:check").action(async () => {
+program.command("students:check <assignment>").action(async assignment => {
   const octokit = robooseOctokit();
   const studentsIssues = await octokit.paginate(
     octokit.issues.listComments.endpoint.merge({
@@ -175,7 +175,7 @@ program.command("students:check").action(async () => {
       await octokit.repos.getContents({
         owner: "jhu-oose",
         repo: `${process.env.COURSE}-student-${github}`,
-        path: "assignments/0.md"
+        path: `assignments/${assignment}.md`
       });
     } catch (error) {
       console.log(`Error with student ${github}: ${error}`);
