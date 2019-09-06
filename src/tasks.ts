@@ -184,6 +184,35 @@ program.command("students:check").action(async () => {
 });
 
 program
+  .command("assignments:template <assignment>")
+  .description("Add assignment starter template to students’s repositories")
+  .action(async assignment => {
+    const octokit = robooseOctokit();
+    const studentsRepositories = await octokit.paginate(
+      octokit.search.repos.endpoint.merge({
+        q: `jhu-oose/${process.env.COURSE}-student-`
+      })
+    );
+    for (const { name: repo } of studentsRepositories) {
+      try {
+        await octokit.repos.createOrUpdateFile({
+          owner: "jhu-oose",
+          repo,
+          path: `assignments/${assignment}.md`,
+          message: `Add Assignment ${assignment} template`,
+          content: (await octokit.repos.getContents({
+            owner: "jhu-oose",
+            repo: `${process.env.COURSE}-staff`,
+            path: `templates/assignments/${assignment}.md`
+          })).data.content
+        });
+      } catch (error) {
+        console.log(`Error with repository ${repo}: ${error}`);
+      }
+    }
+  });
+
+program
   .command("assignments:submit <assignment> <github> <commit> <time>")
   .action(async (assignment, github, commit, time) => {
     const octokit = robooseOctokit();
