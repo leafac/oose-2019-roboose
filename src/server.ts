@@ -143,6 +143,97 @@ ${submission}`
       res.redirect("https://www.jhu-oose.com/assignments/submission/error");
     }
   });
+
+  router.post("/groups", async (req, res) => {
+    try {
+      const {
+        identifier,
+        members: membersWithSpaces,
+        advisors: advisorsWithSpaces
+      } = req.body;
+      if (
+        identifier === undefined ||
+        membersWithSpaces === undefined ||
+        advisorsWithSpaces === undefined
+      )
+        throw "Incomplete form";
+      const members = membersWithSpaces.filter((x: string) => x !== "");
+      const advisors = advisorsWithSpaces.filter((x: string) => x !== "");
+      const octokit = robooseOctokit();
+      await octokit.issues.createComment({
+        owner: "jhu-oose",
+        repo: `${process.env.COURSE}-staff`,
+        issue_number: Number(process.env.ISSUE_GROUPS),
+        body: serialize({ identifier, members, advisors })
+      });
+      for (const member of members) {
+        await octokit.teams.getMembership({
+          team_id: (await octokit.teams.getByName({
+            org: "jhu-oose",
+            team_slug: `${process.env.COURSE}-students`
+          })).data.id,
+          username: member
+        });
+      }
+      await octokit.teams.create({
+        org: "jhu-oose",
+        name: `${process.env.COURSE}-group-${identifier}`,
+        privacy: "closed"
+      });
+      await octokit.repos.createInOrg({
+        org: "jhu-oose",
+        name: `${process.env.COURSE}-group-${identifier}`,
+        description: "Group project",
+        private: true,
+        has_wiki: false
+      });
+      await octokit.teams.addOrUpdateRepo({
+        team_id: (await octokit.teams.getByName({
+          org: "jhu-oose",
+          team_slug: `${process.env.COURSE}-group-${identifier}`
+        })).data.id,
+        owner: "jhu-oose",
+        repo: `${process.env.COURSE}-group-${identifier}`,
+        permission: "push"
+      });
+      await octokit.teams.addOrUpdateRepo({
+        team_id: (await octokit.teams.getByName({
+          org: "jhu-oose",
+          team_slug: `${process.env.COURSE}-staff`
+        })).data.id,
+        owner: "jhu-oose",
+        repo: `${process.env.COURSE}-group-${identifier}`,
+        permission: "push"
+      });
+      for (const member of members) {
+        await octokit.teams.addOrUpdateMembership({
+          team_id: (await octokit.teams.getByName({
+            org: "jhu-oose",
+            team_slug: `${process.env.COURSE}-group-${identifier}`
+          })).data.id,
+          username: member,
+          role: "member"
+        });
+      }
+      await octokit.repos.createOrUpdateFile({
+        owner: "jhu-oose",
+        repo: `${process.env.COURSE}-group-${identifier}`,
+        path: "docs/project-proposal.md",
+        message: "Add project proposal template",
+        content: (await octokit.repos.getContents({
+          owner: "jhu-oose",
+          repo: `${process.env.COURSE}-staff`,
+          path: "templates/group-projects/project-proposal.md"
+        })).data.content
+      });
+      res.redirect("https://www.jhu-oose.com/iterations/0/group-registration");
+    } catch (error) {
+      console.error(error);
+      res.redirect(
+        "https://www.jhu-oose.com/iterations/0/group-registration/error"
+      );
+    }
+  });
 };
 
 function robooseOctokit(): Octokit {

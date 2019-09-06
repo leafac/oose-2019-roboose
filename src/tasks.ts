@@ -233,6 +233,27 @@ program
     );
   });
 
+program.command("groups:delete <identifier>").action(async identifier => {
+  const octokit = robooseOctokit();
+  console.log(
+    `You must manually remove the group data from https://github.com/jhu-oose/${process.env.COURSE}-staff/issues/${process.env.ISSUE_GROUPS}`
+  );
+  try {
+    await octokit.teams.delete({
+      team_id: (await octokit.teams.getByName({
+        org: "jhu-oose",
+        team_slug: `${process.env.COURSE}-group-${identifier}`
+      })).data.id
+    });
+  } catch {}
+  try {
+    await octokit.repos.delete({
+      owner: "jhu-oose",
+      repo: `${process.env.COURSE}-group-${identifier}`
+    });
+  } catch {}
+});
+
 program
   .command("one-off")
   .description("hack task to run locally (never commit changes to this)")
