@@ -117,25 +117,26 @@ export = (app: Application) => {
         path: `assignments/${assignment}.md`,
         ref: commit
       });
-      const submission = serialize({
+      const submission = {
         assignment,
         github,
         commit,
         time: new Date()
-      });
+      };
       await octokit.issues.createComment({
         owner: "jhu-oose",
         repo: `${process.env.COURSE}-staff`,
         issue_number: Number(process.env.ISSUE_ASSIGNMENTS),
-        body: submission
+        body: serialize(submission)
       });
       await octokit.issues.create({
         owner: "jhu-oose",
         repo: `${process.env.COURSE}-student-${github}`,
         title: `Assignment ${assignment} received`,
-        body: `@${github}
-
-${submission}`
+        body: `${serialize(submission)}
+        
+/cc @${github}
+`
       });
       res.redirect("https://www.jhu-oose.com/assignments/submission");
     } catch (error) {

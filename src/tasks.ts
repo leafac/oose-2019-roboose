@@ -221,12 +221,12 @@ program
       repo: `${process.env.COURSE}-student-${github}`,
       ref: commit
     });
-    const submission = serialize({
+    const submission = {
       assignment,
       github,
       commit,
       time: new Date(time)
-    });
+    };
     await octokit.issues.createComment({
       owner: "jhu-oose",
       repo: `${process.env.COURSE}-staff`,
@@ -237,9 +237,9 @@ program
       owner: "jhu-oose",
       repo: `${process.env.COURSE}-student-${github}`,
       title: `Assignment ${assignment} received`,
-      body: `@${github}
+      body: `${serialize(submission)}
 
-${submission}`
+/cc @${github}`
     });
   });
 
@@ -309,9 +309,9 @@ ${submissions
         title: `Grade individual assignment ${assignment}: ${name}`,
         labels: ["grading"],
         milestone,
-        body: `@jhu-oose/${process.env.COURSE}-staff
+        body: `\`grades/assignments/${assignment}/${slugify(name)}.md\`
 
-\`grades/assignments/${assignment}/${slugify(name)}.md\`
+/cc @jhu-oose/${process.env.COURSE}-staff
 `
       });
     }
