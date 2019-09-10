@@ -162,15 +162,14 @@ program.command("students:delete <github>").action(async github => {
 
 program.command("students:check <assignment>").action(async assignment => {
   const octokit = robooseOctokit();
-  const studentsIssues = await octokit.paginate(
+  const students = await octokit.paginate(
     octokit.issues.listComments.endpoint.merge({
       owner: "jhu-oose",
       repo: `${process.env.COURSE}-staff`,
       issue_number: Number(process.env.ISSUE_STUDENTS)
     })
   );
-  for (const studentIssue of studentsIssues) {
-    const { github, hopkins } = unserialize(studentIssue.body);
+  for (const { github, hopkins } of students) {
     try {
       await octokit.repos.getContents({
         owner: "jhu-oose",
@@ -188,12 +187,12 @@ program
   .description("Add assignment starter template to students’s repositories")
   .action(async assignment => {
     const octokit = robooseOctokit();
-    const studentsRepositories = await octokit.paginate(
+    const repositories = await octokit.paginate(
       octokit.search.repos.endpoint.merge({
         q: `jhu-oose/${process.env.COURSE}-student-`
       })
     );
-    for (const { name: repo } of studentsRepositories) {
+    for (const { name: repo } of repositories) {
       try {
         await octokit.repos.createOrUpdateFile({
           owner: "jhu-oose",
