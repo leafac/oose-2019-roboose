@@ -274,6 +274,11 @@ program
         "base64"
       ).toString()
     );
+    const milestone = (await octokit.issues.createMilestone({
+      owner: "jhu-oose",
+      repo: `${process.env.COURSE}-staff`,
+      title: `Grade individual assignment ${assignment}`
+    })).data.number;
     for (const { name, url } of configuration[assignment]) {
       const template = `# Rubric
 
@@ -297,6 +302,17 @@ ${submissions
         path: `grades/assignments/${assignment}/${slugify(name)}.md`,
         message: `Start grading assignment ${assignment}: ${name}`,
         content: Buffer.from(template).toString("base64")
+      });
+      await octokit.issues.create({
+        owner: "jhu-oose",
+        repo: `${process.env.COURSE}-staff`,
+        title: `Grade individual assignment ${assignment}: ${name}`,
+        labels: ["grading"],
+        milestone,
+        body: `@jhu-oose/${process.env.COURSE}-staff
+
+\`grades/assignments/${assignment}/${slugify(name)}.md\`
+`
       });
     }
   });
