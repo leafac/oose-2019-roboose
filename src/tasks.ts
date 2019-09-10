@@ -162,13 +162,13 @@ program.command("students:delete <github>").action(async github => {
 
 program.command("students:check <assignment>").action(async assignment => {
   const octokit = robooseOctokit();
-  const students = await octokit.paginate(
+  const students = (await octokit.paginate(
     octokit.issues.listComments.endpoint.merge({
       owner: "jhu-oose",
       repo: `${process.env.COURSE}-staff`,
       issue_number: Number(process.env.ISSUE_STUDENTS)
     })
-  );
+  )).map(unserializeResponse);
   for (const { github, hopkins } of students) {
     try {
       await octokit.repos.getContents({
