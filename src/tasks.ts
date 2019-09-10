@@ -221,16 +221,32 @@ program
       repo: `${process.env.COURSE}-student-${github}`,
       ref: commit
     });
+    const submission = serialize({
+      assignment,
+      github,
+      commit,
+      time: new Date(time)
+    });
     await octokit.issues.createComment({
       owner: "jhu-oose",
       repo: `${process.env.COURSE}-staff`,
       issue_number: Number(process.env.ISSUE_ASSIGNMENTS),
-      body: serialize({ assignment, github, commit, time: new Date(time) })
+      body: serialize(submission)
     });
+    await octokit.issues.create({
+      owner: "jhu-oose",
+      repo: `${process.env.COURSE}-student-${github}`,
+      title: `Assignment ${assignment} received`,
+      body: `@${github}
 
-    console.log(
-      `You may want to reply to the student with “Thanks for reaching out to us. Your assignment was submitted now.”`
-    );
+${submission}`
+    });
+  });
+
+program
+  .command("assignments:grades:start <assignment>")
+  .action(async assignment => {
+    const octokit = robooseOctokit();
   });
 
 program.command("groups:delete <identifier>").action(async identifier => {
