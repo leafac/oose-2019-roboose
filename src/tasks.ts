@@ -4,6 +4,7 @@ import pluginThrottling from "@octokit/plugin-throttling";
 import Octokit from "@octokit/rest";
 import { Command } from "commander";
 import dotenv from "dotenv";
+import slugifyOriginal from "slugify";
 
 const program = new Command();
 
@@ -246,6 +247,58 @@ program
   .command("assignments:grades:start <assignment>")
   .action(async assignment => {
     const octokit = robooseOctokit();
+    const allSubmissions = (await octokit.paginate(
+      octokit.issues.listComments.endpoint.merge({
+        owner: "jhu-oose",
+        repo: `${process.env.COURSE}-staff`,
+        issue_number: Number(process.env.ISSUE_ASSIGNMENTS)
+      })
+    )).map(unserializeResponse);
+    const submissions = allSubmissions.filter(
+      submission =>
+        assignment === submission.assignment &&
+        !allSubmissions.some(
+          otherSubmission =>
+            submission.assignment === otherSubmission.assignment &&
+            submission.github === otherSubmission.github &&
+            Date.parse(submission.time) < Date.parse(otherSubmission.time)
+        )
+    );
+    const configuration = JSON.parse(
+      Buffer.from(
+        (await octokit.repos.getContents({
+          owner: "jhu-oose",
+          repo: `${process.env.COURSE}-staff`,
+          path: "grades/assignments/configuration.json"
+        })).data.content,
+        "base64"
+      ).toString()
+    );
+    for (const { name, url } of configuration[assignment]) {
+      const template = `# Rubric
+
+# Grades
+
+${submissions
+  .map(
+    ({ github, commit }) => `## [${github}](${eval(`\`${url}\``)})
+
+
+
+**Grader:**
+
+`
+  )
+  .join("")}
+`;
+      await octokit.repos.createOrUpdateFile({
+        owner: "jhu-oose",
+        repo: `${process.env.COURSE}-staff`,
+        path: `grades/assignments/${assignment}/${slugify(name)}.md`,
+        message: `Start grading assignment ${assignment}: ${name}`,
+        content: Buffer.from(template).toString("base64")
+      });
+    }
   });
 
 program.command("groups:delete <identifier>").action(async identifier => {
@@ -311,6 +364,14 @@ function unserialize(issueBody: string): any {
       .replace(/^```json/, "")
       .replace(/```$/, "")
   );
+}
+
+function unserializeResponse(response: { body: string }): any {
+  return unserialize(response.body);
+}
+
+function slugify(string: string): string {
+  return slugifyOriginal(string, { lower: true });
 }
 
 program.command("*").action(() => {
