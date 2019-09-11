@@ -381,7 +381,7 @@ program
         title: `Iteration ${iteration} received`,
         body: `${serialize(iteration)}
 
-/cc @jhu-oose/${github}
+/cc @jhu-oose/${process.env.COURSE}-group-${github.toLowerCase()}
 `
       });
     }
