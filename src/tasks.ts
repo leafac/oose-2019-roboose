@@ -364,7 +364,8 @@ program
         repo: `${process.env.COURSE}-group-${github}`,
         ref: "master"
       })).data.sha;
-      const iteration = {
+      const submission = {
+        iteration,
         github,
         commit,
         time: new Date()
@@ -373,13 +374,13 @@ program
         owner: "jhu-oose",
         repo: `${process.env.COURSE}-staff`,
         issue_number: Number(process.env.ISSUE_ITERATIONS),
-        body: serialize(iteration)
+        body: serialize(submission)
       });
       await octokit.issues.create({
         owner: "jhu-oose",
         repo: `${process.env.COURSE}-group-${github}`,
         title: `Iteration ${iteration} received`,
-        body: `${serialize(iteration)}
+        body: `${serialize(submission)}
 
 /cc @jhu-oose/${process.env.COURSE}-group-${github.toLowerCase()}
 `
