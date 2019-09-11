@@ -10,7 +10,9 @@ const program = new Command();
 
 program
   .command("initialize")
-  .description("create the repositories for staff and students")
+  .description(
+    "create the teams and repositories for staff and students, and the issues that serve as a database"
+  )
   .action(async () => {
     const octokit = robooseOctokit();
     await octokit.teams.create({
@@ -139,6 +141,33 @@ program
     );
   });
 
+program
+  .command("students:check <assignment>")
+  .description(
+    "compare the data in the database with the assignment template files in the students’s repositories"
+  )
+  .action(async assignment => {
+    const octokit = robooseOctokit();
+    const students = (await octokit.paginate(
+      octokit.issues.listComments.endpoint.merge({
+        owner: "jhu-oose",
+        repo: `${process.env.COURSE}-staff`,
+        issue_number: Number(process.env.ISSUE_STUDENTS)
+      })
+    )).map(unserializeResponse);
+    for (const { github, hopkins } of students) {
+      try {
+        await octokit.repos.getContents({
+          owner: "jhu-oose",
+          repo: `${process.env.COURSE}-student-${github}`,
+          path: `assignments/${assignment}.md`
+        });
+      } catch (error) {
+        console.log(`Error with student ${github}: ${error}`);
+      }
+    }
+  });
+
 program.command("students:delete <github>").action(async github => {
   const octokit = robooseOctokit();
   console.log(
@@ -161,31 +190,9 @@ program.command("students:delete <github>").action(async github => {
   } catch {}
 });
 
-program.command("students:check <assignment>").action(async assignment => {
-  const octokit = robooseOctokit();
-  const students = (await octokit.paginate(
-    octokit.issues.listComments.endpoint.merge({
-      owner: "jhu-oose",
-      repo: `${process.env.COURSE}-staff`,
-      issue_number: Number(process.env.ISSUE_STUDENTS)
-    })
-  )).map(unserializeResponse);
-  for (const { github, hopkins } of students) {
-    try {
-      await octokit.repos.getContents({
-        owner: "jhu-oose",
-        repo: `${process.env.COURSE}-student-${github}`,
-        path: `assignments/${assignment}.md`
-      });
-    } catch (error) {
-      console.log(`Error with student ${github}: ${error}`);
-    }
-  }
-});
-
 program
   .command("assignments:template <assignment>")
-  .description("Add assignment starter template to students’s repositories")
+  .description("add assignment starter template to students’s repositories")
   .action(async assignment => {
     const octokit = robooseOctokit();
     const repositories = await octokit.paginate(
