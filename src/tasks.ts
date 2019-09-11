@@ -346,6 +346,48 @@ program.command("groups:delete <identifier>").action(async identifier => {
 });
 
 program
+  .command("iterations:collect <iteration>")
+  .description(
+    "run this when iteration is due to put group projects in database"
+  )
+  .action(async iteration => {
+    const octokit = robooseOctokit();
+    const repositories = await octokit.paginate(
+      octokit.search.repos.endpoint.merge({
+        q: `jhu-oose/${process.env.COURSE}-group-`
+      })
+    );
+    for (const { name } of repositories) {
+      const github = name.slice(`${process.env.COURSE}-group-`.length);
+      const commit = (await octokit.repos.getCommit({
+        owner: "jhu-oose",
+        repo: `${process.env.COURSE}-group-${github}`,
+        ref: "master"
+      })).data.sha;
+      const iteration = {
+        github,
+        commit,
+        time: new Date()
+      };
+      await octokit.issues.createComment({
+        owner: "jhu-oose",
+        repo: `${process.env.COURSE}-staff`,
+        issue_number: Number(process.env.ISSUE_ITERATIONS),
+        body: serialize(iteration)
+      });
+      await octokit.issues.create({
+        owner: "jhu-oose",
+        repo: `${process.env.COURSE}-group-${github}`,
+        title: `Iteration ${iteration} received`,
+        body: `${serialize(iteration)}
+
+/cc @jhu-oose/${github}
+`
+      });
+    }
+  });
+
+program
   .command("one-off")
   .description("hack task to run locally (never commit changes to this)")
   .action(async () => {
