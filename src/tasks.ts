@@ -485,6 +485,7 @@ program
         title: `Review iteration ${iteration}: ${github}`,
         labels: ["reviewing"],
         milestone,
+        assignees: [advisor],
         body: `\`grades/iterations/${iteration}/${github}.md\`
 
 /cc @${advisor}
