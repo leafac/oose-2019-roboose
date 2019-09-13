@@ -217,6 +217,14 @@ program
         console.log(`Error with repository ${repo}: ${error}`);
       }
     }
+    await octokit.issues.create({
+      owner: "jhu-oose",
+      repo: `${process.env.COURSE}-students`,
+      title: `Assignment ${assignment} template added`,
+      body: `See \`assignments/${assignment}.md\` in your personal repository.
+
+/cc @jhu-oose/${process.env.COURSE}-students`
+    });
   });
 
 program
