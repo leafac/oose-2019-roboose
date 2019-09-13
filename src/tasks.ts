@@ -354,6 +354,43 @@ program.command("groups:delete <identifier>").action(async identifier => {
 });
 
 program
+  .command("iterations:template <document>")
+  .description("add document starter template to groups’s repositories")
+  .action(async document => {
+    const octokit = robooseOctokit();
+    const repositories = await octokit.paginate(
+      octokit.search.repos.endpoint.merge({
+        q: `jhu-oose/${process.env.COURSE}-group-`
+      })
+    );
+    for (const { name: repo } of repositories) {
+      try {
+        await octokit.repos.createOrUpdateFile({
+          owner: "jhu-oose",
+          repo,
+          path: `docs/${document}.md`,
+          message: `Add ${document} template`,
+          content: (await octokit.repos.getContents({
+            owner: "jhu-oose",
+            repo: `${process.env.COURSE}-staff`,
+            path: `templates/group-projects/${document}.md`
+          })).data.content
+        });
+      } catch (error) {
+        console.log(`Error with repository ${repo}: ${error}`);
+      }
+    }
+    await octokit.issues.create({
+      owner: "jhu-oose",
+      repo: `${process.env.COURSE}-students`,
+      title: `Document ‘${document}’ template added`,
+      body: `See \`assignments/${document}.md\` in your group repository.
+
+/cc @jhu-oose/${process.env.COURSE}-students`
+    });
+  });
+
+program
   .command("iterations:collect <iteration>")
   .description(
     "run this when iteration is due to put group projects in database"
