@@ -384,7 +384,7 @@ program
       owner: "jhu-oose",
       repo: `${process.env.COURSE}-students`,
       title: `Document ‘${document}’ template added`,
-      body: `See \`assignments/${document}.md\` in your group repository.
+      body: `See \`docs/${document}.md\` in your group repository.
 
 /cc @jhu-oose/${process.env.COURSE}-students`
     });
