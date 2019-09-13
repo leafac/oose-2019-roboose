@@ -154,7 +154,7 @@ program
         repo: `${process.env.COURSE}-staff`,
         issue_number: Number(process.env.ISSUE_STUDENTS)
       })
-    )).map(unserializeResponse);
+    )).map(deserializeResponse);
     for (const { github, hopkins } of students) {
       try {
         await octokit.repos.getContents({
@@ -268,7 +268,7 @@ program
         repo: `${process.env.COURSE}-staff`,
         issue_number: Number(process.env.ISSUE_ASSIGNMENTS)
       })
-    )).map(unserializeResponse);
+    )).map(deserializeResponse);
     const submissions = allSubmissions.filter(
       submission =>
         assignment === submission.assignment &&
@@ -284,7 +284,7 @@ program
         (await octokit.repos.getContents({
           owner: "jhu-oose",
           repo: `${process.env.COURSE}-staff`,
-          path: "grades/assignments/configuration.json"
+          path: "templates/assignments/configuration.json"
         })).data.content,
         "base64"
       ).toString()
@@ -468,7 +468,7 @@ ${JSON.stringify(data, undefined, 2)}
 `;
 }
 
-function unserialize(issueBody: string): any {
+function deserialize(issueBody: string): any {
   return JSON.parse(
     issueBody
       .trim()
@@ -477,8 +477,8 @@ function unserialize(issueBody: string): any {
   );
 }
 
-function unserializeResponse(response: { body: string }): any {
-  return unserialize(response.body);
+function deserializeResponse(response: { body: string }): any {
+  return deserialize(response.body);
 }
 
 function slugify(string: string): string {
