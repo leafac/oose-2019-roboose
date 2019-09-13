@@ -434,6 +434,66 @@ program
   });
 
 program
+  .command("iterations:reviews:start <iteration>")
+  .action(async iteration => {
+    const octokit = robooseOctokit();
+    const submissions = (await octokit.paginate(
+      octokit.issues.listComments.endpoint.merge({
+        owner: "jhu-oose",
+        repo: `${process.env.COURSE}-staff`,
+        issue_number: Number(process.env.ISSUE_ITERATIONS)
+      })
+    ))
+      .map(deserializeResponse)
+      .filter(submission => iteration === submission.iteration);
+    const configuration = JSON.parse(
+      Buffer.from(
+        (await octokit.repos.getContents({
+          owner: "jhu-oose",
+          repo: `${process.env.COURSE}-staff`,
+          path: "templates/iterations/configuration.json"
+        })).data.content,
+        "base64"
+      ).toString()
+    );
+    const template = Buffer.from(
+      (await octokit.repos.getContents({
+        owner: "jhu-oose",
+        repo: `${process.env.COURSE}-staff`,
+        path: `templates/iterations/${iteration}.md`
+      })).data.content,
+      "base64"
+    ).toString();
+    const milestone = (await octokit.issues.createMilestone({
+      owner: "jhu-oose",
+      repo: `${process.env.COURSE}-staff`,
+      title: `Write review for iteration ${iteration}`
+    })).data.number;
+    for (const { iteration, github, commit, time } of submissions) {
+      const advisor = configuration.advisors[github];
+      const renderedTemplate = eval(`\`${template.replace(/`/g, "\\`")}\``);
+      await octokit.repos.createOrUpdateFile({
+        owner: "jhu-oose",
+        repo: `${process.env.COURSE}-staff`,
+        path: `grades/iterations/${iteration}/${github}.md`,
+        message: `Start reviewing iteration ${iteration}: ${github}`,
+        content: Buffer.from(renderedTemplate).toString("base64")
+      });
+      await octokit.issues.create({
+        owner: "jhu-oose",
+        repo: `${process.env.COURSE}-staff`,
+        title: `Review iteration ${iteration}: ${github}`,
+        labels: ["reviewing"],
+        milestone,
+        body: `\`grades/iterations/${iteration}/${github}.md\`
+
+/cc @${advisor}
+`
+      });
+    }
+  });
+
+program
   .command("one-off")
   .description("hack task to run locally (never commit changes to this)")
   .action(async () => {
