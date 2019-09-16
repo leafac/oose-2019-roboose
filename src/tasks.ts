@@ -279,7 +279,7 @@ program
             Date.parse(submission.time) < Date.parse(otherSubmission.time)
         )
     );
-    const headings = Buffer.from(
+    const parts = Buffer.from(
       (await octokit.repos.getContents({
         owner: "jhu-oose",
         repo: `${process.env.COURSE}-staff`,
@@ -296,14 +296,18 @@ program
       repo: `${process.env.COURSE}-staff`,
       title: `Grade individual assignment ${assignment}`
     })).data.number;
-    for (const heading of headings) {
+    for (const part of parts) {
       const template = `# Rubric
 
 # Grades
 
 ${submissions
   .map(
-    ({ github, commit }) => `## [${github}](https://github.com/jhu-oose/${process.env.COURSE}-student-${github}/blob/${commit}/assignments/${assignment}.md#${slugify(heading)})
+    ({ github, commit }) => `## [${github}](https://github.com/jhu-oose/${
+      process.env.COURSE
+    }-student-${github}/blob/${commit}/assignments/${assignment}.md#${slugify(
+      part
+    )})
 
 
 
@@ -316,17 +320,17 @@ ${submissions
       await octokit.repos.createOrUpdateFile({
         owner: "jhu-oose",
         repo: `${process.env.COURSE}-staff`,
-        path: `grades/assignments/${assignment}/${slugify(name)}.md`,
-        message: `Start grading assignment ${assignment}: ${name}`,
+        path: `grades/assignments/${assignment}/${slugify(part)}.md`,
+        message: `Start grading assignment ${assignment}: ${part}`,
         content: Buffer.from(template).toString("base64")
       });
       await octokit.issues.create({
         owner: "jhu-oose",
         repo: `${process.env.COURSE}-staff`,
-        title: `Grade individual assignment ${assignment}: ${name}`,
+        title: `Grade individual assignment ${assignment}: ${part}`,
         labels: ["grading"],
         milestone,
-        body: `\`grades/assignments/${assignment}/${slugify(name)}.md\`
+        body: `\`grades/assignments/${assignment}/${slugify(part)}.md\`
 
 /cc @jhu-oose/${process.env.COURSE}-staff
 `
