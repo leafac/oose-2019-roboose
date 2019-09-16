@@ -279,29 +279,31 @@ program
             Date.parse(submission.time) < Date.parse(otherSubmission.time)
         )
     );
-    const configuration = JSON.parse(
-      Buffer.from(
-        (await octokit.repos.getContents({
-          owner: "jhu-oose",
-          repo: `${process.env.COURSE}-staff`,
-          path: "templates/assignments/configuration.json"
-        })).data.content,
-        "base64"
-      ).toString()
-    );
+    const headings = Buffer.from(
+      (await octokit.repos.getContents({
+        owner: "jhu-oose",
+        repo: `${process.env.COURSE}-staff`,
+        path: `templates/assignments/${assignment}.md`
+      })).data.content,
+      "base64"
+    )
+      .toString()
+      .match(/^# .*/gm)!
+      .slice(1)
+      .map(heading => heading.slice("# ".length));
     const milestone = (await octokit.issues.createMilestone({
       owner: "jhu-oose",
       repo: `${process.env.COURSE}-staff`,
       title: `Grade individual assignment ${assignment}`
     })).data.number;
-    for (const { name, url } of configuration[assignment]) {
+    for (const heading of headings) {
       const template = `# Rubric
 
 # Grades
 
 ${submissions
   .map(
-    ({ github, commit }) => `## [${github}](${eval(`\`${url}\``)})
+    ({ github, commit }) => `## [${github}](https://github.com/jhu-oose/${process.env.COURSE}-student-${github}/blob/${commit}/assignments/${assignment}.md#${slugify(heading)})
 
 
 
