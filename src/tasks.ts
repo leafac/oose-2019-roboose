@@ -338,6 +338,31 @@ ${submissions
     }
   });
 
+program.command("feedbacks:read").action(async () => {
+  const octokit = robooseOctokit();
+  const feedbacks = (await octokit.paginate(
+    octokit.issues.listComments.endpoint.merge({
+      owner: "jhu-oose",
+      repo: `${process.env.COURSE}-staff`,
+      issue_number: Number(process.env.ISSUE_FEEDBACKS)
+    })
+  )).map(deserializeResponse);
+  for (const feedback of feedbacks) {
+    console.log(`**Assignment:** ${feedback.assignment}
+
+**Lecture Liked:** ${feedback.feedback.lecture.liked}
+
+**Lecture Improved:** ${feedback.feedback.lecture.improved}
+
+**Assignment Liked:** ${feedback.feedback.assignment.liked}
+
+**Assignment Improved:** ${feedback.feedback.assignment.improved}
+
+---
+`);
+  }
+});
+
 program.command("groups:delete <identifier>").action(async identifier => {
   const octokit = robooseOctokit();
   console.log(
