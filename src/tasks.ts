@@ -141,33 +141,6 @@ program
     );
   });
 
-program
-  .command("students:check <assignment>")
-  .description(
-    "compare the data in the database with the assignment template files in the students’s repositories"
-  )
-  .action(async assignment => {
-    const octokit = robooseOctokit();
-    const students = (await octokit.paginate(
-      octokit.issues.listComments.endpoint.merge({
-        owner: "jhu-oose",
-        repo: `${process.env.COURSE}-staff`,
-        issue_number: Number(process.env.ISSUE_STUDENTS)
-      })
-    )).map(deserializeResponse);
-    for (const { github, hopkins } of students) {
-      try {
-        await octokit.repos.getContents({
-          owner: "jhu-oose",
-          repo: `${process.env.COURSE}-student-${github}`,
-          path: `assignments/${assignment}.md`
-        });
-      } catch (error) {
-        console.log(`Error with student ${github}: ${error}`);
-      }
-    }
-  });
-
 program.command("students:delete <github>").action(async github => {
   const octokit = robooseOctokit();
   console.log(
@@ -191,7 +164,7 @@ program.command("students:delete <github>").action(async github => {
 });
 
 program
-  .command("assignments:template <assignment>")
+  .command("assignments:templates:add <assignment>")
   .description("add assignment starter template to students’s repositories")
   .action(async assignment => {
     const octokit = robooseOctokit();
@@ -225,6 +198,30 @@ program
 
 /cc @jhu-oose/${process.env.COURSE}-students`
     });
+  });
+
+program
+  .command("assignments:template:check <assignment>")
+  .action(async assignment => {
+    const octokit = robooseOctokit();
+    const students = (await octokit.paginate(
+      octokit.issues.listComments.endpoint.merge({
+        owner: "jhu-oose",
+        repo: `${process.env.COURSE}-staff`,
+        issue_number: Number(process.env.ISSUE_STUDENTS)
+      })
+    )).map(deserializeResponse);
+    for (const { github, hopkins } of students) {
+      try {
+        await octokit.repos.getContents({
+          owner: "jhu-oose",
+          repo: `${process.env.COURSE}-student-${github}`,
+          path: `assignments/${assignment}.md`
+        });
+      } catch (error) {
+        console.log(`Error with student ${github}: ${error}`);
+      }
+    }
   });
 
 program
