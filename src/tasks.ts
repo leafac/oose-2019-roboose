@@ -256,6 +256,24 @@ program
   });
 
 program
+  .command("assignments:submissions:check <github>")
+  .action(async github => {
+    const octokit = robooseOctokit();
+    const submissions = (await octokit.paginate(
+      octokit.issues.listComments.endpoint.merge({
+        owner: "jhu-oose",
+        repo: `${process.env.COURSE}-staff`,
+        issue_number: Number(process.env.ISSUE_ASSIGNMENTS)
+      })
+    ))
+      .map(deserializeResponse)
+      .filter(submission => submission.github === github);
+    for (const submission of submissions) {
+      console.log(serialize(submission));
+    }
+  });
+
+program
   .command("assignments:grades:start <assignment>")
   .action(async assignment => {
     const octokit = robooseOctokit();
@@ -268,7 +286,7 @@ program
     )).map(deserializeResponse);
     const submissions = allSubmissions.filter(
       submission =>
-        assignment === submission.assignment &&
+        submission.assignment === assignment &&
         !allSubmissions.some(
           otherSubmission =>
             submission.assignment === otherSubmission.assignment &&
@@ -473,7 +491,7 @@ program
       })
     ))
       .map(deserializeResponse)
-      .filter(submission => iteration === submission.iteration);
+      .filter(submission => submission.iteration === iteration);
     const configuration = JSON.parse(
       Buffer.from(
         (await octokit.repos.getContents({
