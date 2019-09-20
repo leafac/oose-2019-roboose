@@ -4,6 +4,8 @@ import pluginThrottling from "@octokit/plugin-throttling";
 import Octokit from "@octokit/rest";
 import { Command } from "commander";
 import dotenv from "dotenv";
+import inquirer from "inquirer";
+import open from "open";
 import slugifyOriginal from "slugify";
 
 const program = new Command();
@@ -161,6 +163,21 @@ program.command("students:delete <github>").action(async github => {
       repo: `${process.env.COURSE}-student-${github}`
     });
   } catch {}
+});
+
+program.command("students:profiles:open").action(async github => {
+  const octokit = robooseOctokit();
+  const repositories = await octokit.paginate(
+    octokit.search.repos.endpoint.merge({
+      q: `jhu-oose/${process.env.COURSE}-student-`
+    })
+  );
+  for (const { name: repo } of repositories) {
+    await open(`https://github.com/jhu-oose/${repo}`);
+    await inquirer.prompt([
+      { name: "Press ENTER to open next student’s profile" }
+    ]);
+  }
 });
 
 program
