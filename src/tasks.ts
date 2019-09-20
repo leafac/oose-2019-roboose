@@ -201,7 +201,7 @@ program
   });
 
 program
-  .command("assignments:template:check <assignment>")
+  .command("assignments:templates:check <assignment>")
   .action(async assignment => {
     const octokit = robooseOctokit();
     const students = (await octokit.paginate(
