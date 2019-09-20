@@ -225,7 +225,7 @@ program
   });
 
 program
-  .command("assignments:submit <assignment> <github> <commit> <time>")
+  .command("assignments:submissions:add <assignment> <github> <commit> <time>")
   .action(async (assignment, github, commit, time) => {
     const octokit = robooseOctokit();
     await octokit.repos.getCommit({
