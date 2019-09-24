@@ -355,7 +355,7 @@ ${submissions
         owner: "jhu-oose",
         repo: `${process.env.COURSE}-staff`,
         path: `grades/assignments/${assignment}/${slugify(part)}.md`,
-        message: `Start grading assignment ${assignment}: ${part}`,
+        message: `Grade individual assignment ${assignment}: ${part}`,
         content: Buffer.from(template).toString("base64")
       });
       await octokit.issues.create({
@@ -533,7 +533,7 @@ program
     const milestone = (await octokit.issues.createMilestone({
       owner: "jhu-oose",
       repo: `${process.env.COURSE}-staff`,
-      title: `Write review for iteration ${iteration}`
+      title: `Review group project iteration ${iteration}`
     })).data.number;
     for (const { iteration, github, commit, time } of submissions) {
       const advisor = configuration.advisors[github];
@@ -542,13 +542,13 @@ program
         owner: "jhu-oose",
         repo: `${process.env.COURSE}-staff`,
         path: `grades/iterations/${iteration}/${github}.md`,
-        message: `Start reviewing iteration ${iteration}: ${github}`,
+        message: `Review group project iteration ${iteration}: ${github}`,
         content: Buffer.from(renderedTemplate).toString("base64")
       });
       await octokit.issues.create({
         owner: "jhu-oose",
         repo: `${process.env.COURSE}-staff`,
-        title: `Review iteration ${iteration}: ${github}`,
+        title: `Review group project iteration ${iteration}: ${github}`,
         labels: ["reviewing"],
         milestone,
         assignees: [advisor],
@@ -596,6 +596,7 @@ You may get some points back for things that you fix, and you have to discuss th
 `
       });
     }
+    console.log(`Close the milestone ‘Review group project iteration ${iteration}’.`);
   });
 
 program
