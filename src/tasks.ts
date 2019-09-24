@@ -412,7 +412,7 @@ program
       type RubricItemName = string;
       type RubricItemContent = string;
       const rubric = rubricSection
-        .split(/^## /m)
+        .split(/^##\s*/m)
         .slice(1)
         .reduce((rubric, item) => {
           const [, name, content] = item.match(/(.*?)\n(.*)/s)!;
@@ -422,10 +422,10 @@ program
           });
           return rubric.set(name, content);
         }, new Map<RubricItemName, RubricItemContent>());
-      const gradesMappings = gradesSection
-        .split(/^## /m)
+      const partGradesMappings = gradesSection
+        .split(/^##\s*/m)
         .slice(1)
-        .reduce((gradesMappings, entry) => {
+        .reduce((partGradesMappings, entry) => {
           const [, github, url, rawContent] = entry.match(
             /\[(.*?)\]\((.*?)\)(.*)/s
           )!;
@@ -448,7 +448,7 @@ program
               }
             })
             .join("\n");
-          return gradesMappings.set(
+          return partGradesMappings.set(
             github,
             `# [${part}](${url})
   
@@ -456,24 +456,31 @@ ${content}
 `
           );
         }, new Map<Github, Grade>());
-      partsGradesMappings.push(gradesMappings);
+      partsGradesMappings.push(partGradesMappings);
     }
-    const gradesMappings = partsGradesMappings[0];
-    for (const partGradesMappings of partsGradesMappings.slice(1)) {
-      if (gradesMappings.size !== partGradesMappings.size)
-        throw "Different number of students in the grading files for the different parts of the assignment";
-      for (const [github, grade] of gradesMappings) {
-        if (!partGradesMappings.has(github))
-          throw `Student ${github} is in one of the grading files, but not the other.`;
-        gradesMappings.set(github, grade + partGradesMappings.get(github));
+    const aggregatedGradesMappings = partsGradesMappings.reduce(
+      (gradesMappings, partGradesMappings) => {
+        const augmentedGradesMappings = new Map();
+        if (gradesMappings.size !== partGradesMappings.size)
+          throw "Different number of students in the grading files for the different parts of the assignment";
+        for (const github of gradesMappings.keys()) {
+          if (!partGradesMappings.has(github))
+            throw `Student ${github} is in one of the grading files, but not the other.`;
+          augmentedGradesMappings.set(
+            github,
+            gradesMappings.get(github)! + partGradesMappings.get(github)!
+          );
+        }
+        return augmentedGradesMappings;
       }
-    }
-    for (const [github, grade] of gradesMappings) {
+    );
+    const totalsGradesMappings = new Map();
+    for (const [github, grade] of aggregatedGradesMappings) {
       const points = (grade.match(/^\*\*(-|\+)\d+\*\*/gm) || []).map(point =>
         Number(point.slice("**".length, point.length - "**".length))
       );
       const total = points.reduce((a, b) => a + b, 100);
-      gradesMappings.set(
+      totalsGradesMappings.set(
         github,
         `# ${title}
 
@@ -491,7 +498,7 @@ To request a regrade, comment on this issue within one week. Mention the grader 
 `
       );
     }
-    for (const [github, grade] of gradesMappings) {
+    for (const [github, grade] of totalsGradesMappings) {
       await octokit.issues.create({
         owner: "jhu-oose",
         repo: `${process.env.COURSE}-student-${github}`,
