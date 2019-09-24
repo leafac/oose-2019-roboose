@@ -596,7 +596,20 @@ You may get some points back for things that you fix, and you have to discuss th
 `
       });
     }
-    console.log(`Close the milestone ‘Review group project iteration ${iteration}’.`);
+    await octokit.issues.updateMilestone({
+      owner: "jhu-oose",
+      repo: `${process.env.COURSE}-staff`,
+      milestone_number: (await octokit.paginate(
+        octokit.issues.listMilestonesForRepo.endpoint.merge({
+          owner: "jhu-oose",
+          repo: `${process.env.COURSE}-staff`
+        })
+      )).find(
+        milestone =>
+          milestone.title === `Review group project iteration ${iteration}`
+      ).number,
+      state: "closed"
+    });
   });
 
 program
