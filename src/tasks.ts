@@ -435,8 +435,6 @@ program
             .map(line => {
               if (line.match(/^\*\*(-|\+)\d+\*\*/)) {
                 return line;
-              } else if (rubric.has(line)) {
-                return rubric.get(line);
               } else if (line.match(/^\*\*Grader:\*\*/)) {
                 const [, grader] = line.match(/^\*\*Grader:\*\*\s*(.*)/)!;
                 if (!staff.includes(grader)) {
@@ -445,6 +443,8 @@ program
                 return line;
               } else if (line === "") {
                 return line;
+              } else if (rubric.has(line)) {
+                return rubric.get(line);
               } else {
                 throw `Error in grade section (misuse of rubric?) (Part: ‘${part}’ · Student: ‘${github}’ · Line: ‘${line}’)`;
               }
@@ -464,8 +464,11 @@ program
     for (const partGradesMappings of partsGradesMappings.slice(1)) {
       if (gradesMappings.size !== partGradesMappings.size)
         throw "Different number of students in the grading files for the different parts of the assignment";
-      for (const [github, grade] of gradesMappings)
+      for (const [github, grade] of gradesMappings) {
+        if (!partGradesMappings.has(github))
+          throw `Student ${github} is in one of the grading files, but not the other.`;
         gradesMappings.set(github, grade + partGradesMappings.get(github));
+    }
     }
     for (const [github, grade] of gradesMappings) {
       const points = grade
@@ -476,7 +479,9 @@ program
       const total = points.reduce((a, b) => a + b, 100);
       gradesMappings.set(
         github,
-        `${grade}
+        `# ${title}
+
+${grade}
 
 ---
 
