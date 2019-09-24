@@ -468,7 +468,7 @@ program
         if (!partGradesMappings.has(github))
           throw `Student ${github} is in one of the grading files, but not the other.`;
         gradesMappings.set(github, grade + partGradesMappings.get(github));
-    }
+      }
     }
     for (const [github, grade] of gradesMappings) {
       const points = grade
