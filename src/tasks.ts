@@ -417,9 +417,8 @@ program
         .reduce((rubric, item) => {
           const [, name, content] = item.match(/(.*?)\n(.*)/s)!;
           content.split("\n").forEach(line => {
-            if (!line.match(/^\*\*(-|\+)\d+\*\*/) && line !== "") {
+            if (!line.match(/^\*\*(-|\+)\d+\*\*/) && line !== "")
               throw `Error in rubric section (missing points?) (Part: ‘${part}’ · Name: ‘${name}’ · Line: ‘${line}’)`;
-            }
           });
           return rubric.set(name, content);
         }, new Map<RubricItemName, RubricItemContent>());
@@ -437,9 +436,8 @@ program
                 return line;
               } else if (line.match(/^\*\*Grader:\*\*/)) {
                 const [, grader] = line.match(/^\*\*Grader:\*\*\s*(.*)/)!;
-                if (!staff.includes(grader)) {
+                if (!staff.includes(grader))
                   throw `Grader ‘${grader}’ isn’t a member of GitHub team ‘${process.env.COURSE}-staff’ (Part: ‘${part}’ · Student: ‘${github}’)`;
-                }
                 return line;
               } else if (line === "") {
                 return line;
