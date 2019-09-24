@@ -213,7 +213,8 @@ program
       title: `Assignment ${assignment} template added`,
       body: `See \`assignments/${assignment}.md\` in your personal repository.
 
-/cc @jhu-oose/${process.env.COURSE}-students`
+/cc @jhu-oose/${process.env.COURSE}-students
+`
     });
   });
 
@@ -268,7 +269,8 @@ program
       title: `Assignment ${assignment} received`,
       body: `${serialize(submission)}
 
-/cc @${github}`
+/cc @${github}
+`
     });
   });
 
@@ -449,7 +451,8 @@ program
       title: `Document ‘${document}’ template added`,
       body: `See \`docs/${document}.md\` in your group repository.
 
-/cc @jhu-oose/${process.env.COURSE}-students`
+/cc @jhu-oose/${process.env.COURSE}-students
+`
     });
   });
 
@@ -552,6 +555,44 @@ program
         body: `\`grades/iterations/${iteration}/${github}.md\`
 
 /cc @${advisor}
+`
+      });
+    }
+  });
+
+program
+  .command("iterations:reviews:publish <iteration>")
+  .action(async iteration => {
+    const octokit = robooseOctokit();
+    const reviews = (await octokit.repos.getContents({
+      owner: "jhu-oose",
+      repo: `${process.env.COURSE}-staff`,
+      path: `grades/iterations/${iteration}/`
+    })).data;
+    for (const { name, path } of reviews) {
+      const github = name.slice(0, name.length - ".md".length);
+      await octokit.issues.create({
+        owner: "jhu-oose",
+        repo: `${process.env.COURSE}-group-${github}`,
+        title: `Review of iteration ${iteration}`,
+        body: `${Buffer.from(
+          (await octokit.repos.getContents({
+            owner: "jhu-oose",
+            repo: `${process.env.COURSE}-staff`,
+            path
+          })).data.content,
+          "base64"
+        ).toString()}
+
+---
+
+To accept the review, close this issue.
+
+To request a change, comment on this issue within one week. Mention the reviewer, for example, if your reviewer is \`jhu-oose-example-ca\`, mention with \`@jhu-oose-example-ca\`.
+
+You may get some points back for things that you fix, and you have to discuss this with your reviewer.
+
+/cc @jhu-oose/${process.env.COURSE}-group-${github.toLowerCase()}
 `
       });
     }
