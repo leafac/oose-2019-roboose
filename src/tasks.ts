@@ -452,8 +452,8 @@ program
             github,
             `# [${part}](${url})
   
-  ${content}
-  `
+${content}
+`
           );
         }, new Map<Github, Grade>());
       partsGradesMappings.push(gradesMappings);
@@ -469,11 +469,9 @@ program
       }
     }
     for (const [github, grade] of gradesMappings) {
-      const points = grade
-        .match(/^\*\*(-|\+)\d+\*\*/gm)!
-        .map(point =>
-          Number(point.slice("**-".length, point.length - "**".length))
-        );
+      const points = (grade.match(/^\*\*(-|\+)\d+\*\*/gm) || []).map(point =>
+        Number(point.slice("**".length, point.length - "**".length))
+      );
       const total = points.reduce((a, b) => a + b, 100);
       gradesMappings.set(
         github,
