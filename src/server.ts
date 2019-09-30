@@ -44,12 +44,13 @@ export = (app: Application) => {
         })).data.id,
         owner: "jhu-oose",
         repo: `${process.env.COURSE}-student-${github}`,
-        permission: "push"
+        permission: "admin"
       });
       await octokit.repos.addCollaborator({
         owner: "jhu-oose",
         repo: `${process.env.COURSE}-student-${github}`,
-        username: github
+        username: github,
+        permission: "admin"
       });
       await octokit.repos.createOrUpdateFile({
         owner: "jhu-oose",
@@ -195,7 +196,7 @@ export = (app: Application) => {
         })).data.id,
         owner: "jhu-oose",
         repo: `${process.env.COURSE}-group-${identifier}`,
-        permission: "push"
+        permission: "admin"
       });
       await octokit.teams.addOrUpdateRepo({
         team_id: (await octokit.teams.getByName({
@@ -204,7 +205,7 @@ export = (app: Application) => {
         })).data.id,
         owner: "jhu-oose",
         repo: `${process.env.COURSE}-group-${identifier}`,
-        permission: "push"
+        permission: "admin"
       });
       for (const member of members) {
         await octokit.teams.addOrUpdateMembership({
