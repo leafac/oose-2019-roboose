@@ -143,6 +143,28 @@ program
     );
   });
 
+program.command("students:check").action(async () => {
+  const octokit = robooseOctokit();
+  const students = (await octokit.paginate(
+    octokit.issues.listComments.endpoint.merge({
+      owner: "jhu-oose",
+      repo: `${process.env.COURSE}-staff`,
+      issue_number: Number(process.env.ISSUE_STUDENTS)
+    })
+  )).map(deserializeResponse);
+  for (const { github, hopkins } of students) {
+    try {
+      await octokit.repos.getContents({
+        owner: "jhu-oose",
+        repo: `${process.env.COURSE}-student-${github}`,
+        path: `assignments/0.md`
+      });
+    } catch (error) {
+      console.log(`Error with student ${github}: ${error}`);
+    }
+  }
+});
+
 program.command("students:delete <github>").action(async github => {
   const octokit = robooseOctokit();
   console.log(
@@ -222,22 +244,20 @@ program
   .command("assignments:templates:check <assignment>")
   .action(async assignment => {
     const octokit = robooseOctokit();
-    const students = (await octokit.paginate(
-      octokit.issues.listComments.endpoint.merge({
-        owner: "jhu-oose",
-        repo: `${process.env.COURSE}-staff`,
-        issue_number: Number(process.env.ISSUE_STUDENTS)
+    const repositories = await octokit.paginate(
+      octokit.search.repos.endpoint.merge({
+        q: `jhu-oose/${process.env.COURSE}-student-`
       })
-    )).map(deserializeResponse);
-    for (const { github, hopkins } of students) {
+    );
+    for (const { name: repo } of repositories) {
       try {
         await octokit.repos.getContents({
           owner: "jhu-oose",
-          repo: `${process.env.COURSE}-student-${github}`,
+          repo,
           path: `assignments/${assignment}.md`
         });
       } catch (error) {
-        console.log(`Error with student ${github}: ${error}`);
+        console.log(`Error with repository ${repo}: ${error}`);
       }
     }
   });
