@@ -112,12 +112,6 @@ export = (app: Application) => {
         issue_number: Number(process.env.ISSUE_FEEDBACKS),
         body: serialize({ assignment, feedback })
       });
-      await octokit.repos.getContents({
-        owner: "jhu-oose",
-        repo: `${process.env.COURSE}-student-${github}`,
-        path: `assignments/${assignment}.md`,
-        ref: commit
-      });
       const submission = {
         assignment,
         github,
@@ -129,6 +123,12 @@ export = (app: Application) => {
         repo: `${process.env.COURSE}-staff`,
         issue_number: Number(process.env.ISSUE_ASSIGNMENTS),
         body: serialize(submission)
+      });
+      await octokit.repos.getContents({
+        owner: "jhu-oose",
+        repo: `${process.env.COURSE}-student-${github}`,
+        path: `assignments/${assignment}.md`,
+        ref: commit
       });
       await octokit.issues.create({
         owner: "jhu-oose",
