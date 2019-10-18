@@ -266,9 +266,10 @@ program
   .command("assignments:submissions:add <assignment> <github> <commit> <time>")
   .action(async (assignment, github, commit, time) => {
     const octokit = robooseOctokit();
-    await octokit.repos.getCommit({
+    await octokit.repos.getContents({
       owner: "jhu-oose",
       repo: `${process.env.COURSE}-student-${github}`,
+      path: `assignments/${assignment}.md`,
       ref: commit
     });
     const submission = {
