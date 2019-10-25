@@ -143,7 +143,7 @@ program
     );
   });
 
-program.command("students:check").action(async () => {
+program.command("students:check:registration").action(async () => {
   const octokit = robooseOctokit();
   const students = (await octokit.paginate(
     octokit.issues.listComments.endpoint.merge({
@@ -161,6 +161,38 @@ program.command("students:check").action(async () => {
       });
     } catch (error) {
       console.log(`Error with student ${github}: ${error}`);
+    }
+  }
+});
+
+program.command("students:check:hopkins").action(async () => {
+  const octokit = robooseOctokit();
+  const configuration = JSON.parse(
+    Buffer.from(
+      (await octokit.repos.getContents({
+        owner: "jhu-oose",
+        repo: `${process.env.COURSE}-staff`,
+        path: "configuration.json"
+      })).data.content,
+      "base64"
+    ).toString()
+  );
+  const students = (await octokit.paginate(
+    octokit.issues.listComments.endpoint.merge({
+      owner: "jhu-oose",
+      repo: `${process.env.COURSE}-staff`,
+      issue_number: Number(process.env.ISSUE_STUDENTS)
+    })
+  )).map(deserializeResponse);
+  for (const { github, hopkins } of students) {
+    if (!configuration.hopkinses.includes(hopkins)) {
+      try {
+        await octokit.repos.get({
+          owner: "jhu-oose",
+          repo: `${process.env.COURSE}-student-${github}`
+        });
+        console.log(github);
+      } catch {}
     }
   }
 });
@@ -688,7 +720,7 @@ program
         (await octokit.repos.getContents({
           owner: "jhu-oose",
           repo: `${process.env.COURSE}-staff`,
-          path: "templates/iterations/configuration.json"
+          path: "configuration.json"
         })).data.content,
         "base64"
       ).toString()
