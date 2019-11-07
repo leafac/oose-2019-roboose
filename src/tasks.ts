@@ -552,12 +552,27 @@ To request a regrade, comment on this issue within one week. Mention the grader 
       );
     }
     for (const [github, grade] of totalsGradesMappings) {
-      await octokit.issues.create({
-        owner: "jhu-oose",
-        repo: `${process.env.COURSE}-student-${github}`,
-        title: `Grade for assignment ${assignment}`,
-        body: grade
-      });
+      try {
+        if (
+          (await octokit.paginate(
+            octokit.issues.listForRepo.endpoint.merge({
+              owner: "jhu-oose",
+              repo: `${process.env.COURSE}-student-${github}`
+            })
+          )).find(
+            issue => issue.title === `Grade for assignment ${assignment}`
+          ) === undefined
+        ) {
+          await octokit.issues.create({
+            owner: "jhu-oose",
+            repo: `${process.env.COURSE}-student-${github}`,
+            title: `Grade for assignment ${assignment}`,
+            body: grade
+          });
+        }
+      } catch (e) {
+        console.log(`Problem with student ‘${github}’: ${e}`);
+      }
     }
     await octokit.issues.updateMilestone({
       owner: "jhu-oose",
