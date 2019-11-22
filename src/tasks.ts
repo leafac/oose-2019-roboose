@@ -7,6 +7,7 @@ import dotenv from "dotenv";
 import inquirer from "inquirer";
 import open from "open";
 import slugifyOriginal from "slugify";
+import fs from "fs";
 
 const program = new Command();
 
@@ -588,6 +589,32 @@ To request a regrade, comment on this issue within one week. Mention the grader 
       ).number,
       state: "closed"
     });
+  });
+
+program
+  .command("quiz:upload <path-to-scanned-pdfs>")
+  .action(async pathToScannedPdfs => {
+    const octokit = robooseOctokit();
+    const pdfs = fs
+      .readdirSync(pathToScannedPdfs)
+      .filter(file => file.endsWith(".pdf"));
+    for (const pdf of pdfs) {
+      const github = pdf.slice(0, pdf.length - ".pdf".length);
+      const repo = `${process.env.COURSE}-student-${github}`;
+      try {
+        await octokit.repos.createOrUpdateFile({
+          owner: "jhu-oose",
+          repo,
+          path: `quiz.pdf`,
+          message: `Add quiz`,
+          content: fs
+            .readFileSync(`${pathToScannedPdfs}/${pdf}`)
+            .toString("base64")
+        });
+      } catch (error) {
+        console.log(`Error with repository ${repo}: ${error}`);
+      }
+    }
   });
 
 program.command("feedbacks:read").action(async () => {
