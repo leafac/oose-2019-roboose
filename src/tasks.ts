@@ -399,7 +399,7 @@ ${submissions
 
 
 
-**Grader:**
+**Grader:** 
 
 `
   )
@@ -418,7 +418,13 @@ ${submissions
         title: `Grade individual assignment ${assignment}: ${part}`,
         labels: ["grading"],
         milestone,
-        body: `\`grades/assignments/${assignment}/${slugify(part)}.md\`
+        body: `[\`grades/assignments/${assignment}/${slugify(
+          part
+        )}.md\`](https://github.com/jhu-oose/${
+          process.env.COURSE
+        }-staff/blob/master/grades/assignments/${assignment}/${slugify(
+          part
+        )}.md)
 
 /cc @jhu-oose/${process.env.COURSE}-staff
 `
@@ -592,7 +598,7 @@ To request a regrade, comment on this issue within one week. Mention the grader 
   });
 
 program
-  .command("quiz:upload <path-to-scanned-pdfs>")
+  .command("quiz:submissions:add <path-to-scanned-pdfs>")
   .action(async pathToScannedPdfs => {
     const octokit = robooseOctokit();
     const pdfs = fs
@@ -616,6 +622,98 @@ program
       }
     }
   });
+
+program.command("quiz:submissions:check").action(async () => {
+  const octokit = robooseOctokit();
+  const githubs = (await octokit.paginate(
+    octokit.teams.listMembers.endpoint.merge({
+      team_id: (await octokit.teams.getByName({
+        org: "jhu-oose",
+        team_slug: `${process.env.COURSE}-students`
+      })).data.id
+    })
+  )).map(s => s.login);
+  for (const github of githubs) {
+    try {
+      await octokit.repos.getContents({
+        owner: "jhu-oose",
+        repo: `${process.env.COURSE}-student-${github}`,
+        path: `quiz.pdf`
+      });
+    } catch (error) {
+      console.log(`Error with student ${github}: ${error}`);
+    }
+  }
+});
+
+program.command("quiz:grades:start").action(async () => {
+  const octokit = robooseOctokit();
+  const githubs = (await octokit.paginate(
+    octokit.teams.listMembers.endpoint.merge({
+      team_id: (await octokit.teams.getByName({
+        org: "jhu-oose",
+        team_slug: `${process.env.COURSE}-students`
+      })).data.id
+    })
+  )).map(s => s.login);
+  const parts = Buffer.from(
+    (await octokit.repos.getContents({
+      owner: "jhu-oose",
+      repo: `${process.env.COURSE}-staff`,
+      path: `templates/quiz.md`
+    })).data.content,
+    "base64"
+  )
+    .toString()
+    .match(/^# .*/gm)!
+    .slice(1)
+    .map(heading => heading.slice("# ".length));
+  const milestone = (await octokit.issues.createMilestone({
+    owner: "jhu-oose",
+    repo: `${process.env.COURSE}-staff`,
+    title: `Grade quiz`
+  })).data.number;
+  for (const part of parts) {
+    const template = `# Rubric
+
+# Grades
+
+${githubs
+  .map(
+    github => `## [${github}](https://github.com/jhu-oose/${process.env.COURSE}-student-${github}/blob/master/quiz.pdf)
+
+
+
+**Grader:** 
+
+`
+  )
+  .join("")}
+`;
+    await octokit.repos.createOrUpdateFile({
+      owner: "jhu-oose",
+      repo: `${process.env.COURSE}-staff`,
+      path: `grades/quiz/${slugify(part)}.md`,
+      message: `Grade quiz: ${part}`,
+      content: Buffer.from(template).toString("base64")
+    });
+    await octokit.issues.create({
+      owner: "jhu-oose",
+      repo: `${process.env.COURSE}-staff`,
+      title: `Grade quiz: ${part}`,
+      labels: ["quiz"],
+      milestone,
+      body: `[\`grades/quiz/${slugify(
+        part
+      )}.md\`](https://github.com/jhu-oose/${
+        process.env.COURSE
+      }-staff/blob/master/grades/quiz/${slugify(part)}.md)
+
+/cc @jhu-oose/${process.env.COURSE}-staff
+`
+    });
+  }
+});
 
 program.command("feedbacks:read").action(async () => {
   const octokit = robooseOctokit();
@@ -797,7 +895,7 @@ program
         labels: ["reviewing"],
         milestone,
         assignees: [advisor],
-        body: `\`grades/iterations/${iteration}/${github}.md\`
+        body: `[\`grades/iterations/${iteration}/${github}.md\`](https://github.com/jhu-oose/${process.env.COURSE}-staff/blob/master/grades/iterations/${iteration}/${github}.md)
 
 /cc @${advisor}
 `
