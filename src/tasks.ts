@@ -715,6 +715,171 @@ ${githubs
   }
 });
 
+program
+  .command("quiz:grades:publish")
+  .action(async () => {
+    const octokit = robooseOctokit();
+    const staff = (await octokit.paginate(
+      octokit.teams.listMembers.endpoint.merge({
+        team_id: (await octokit.teams.getByName({
+          org: "jhu-oose",
+          team_slug: `${process.env.COURSE}-staff`
+        })).data.id
+      })
+    )).map(member => member.login);
+    const [title, ...parts] = Buffer.from(
+      (await octokit.repos.getContents({
+        owner: "jhu-oose",
+        repo: `${process.env.COURSE}-staff`,
+        path: `templates/quiz.md`
+      })).data.content,
+      "base64"
+    )
+      .toString()
+      .match(/^# .*/gm)!
+      .map(heading => heading.slice("# ".length));
+    type Github = string;
+    type Grade = string;
+    const partsGradesMappings = new Array<Map<Github, Grade>>();
+    for (const part of parts) {
+      const [, rubricSection, gradesSection] = Buffer.from(
+        (await octokit.repos.getContents({
+          owner: "jhu-oose",
+          repo: `${process.env.COURSE}-staff`,
+          path: `grades/quiz/${slugify(part)}.md`
+        })).data.content,
+        "base64"
+      )
+        .toString()
+        .match(/^# Rubric(.*)^# Grades(.*)/ms)!;
+      type RubricItemName = string;
+      type RubricItemContent = string;
+      const rubric = rubricSection
+        .split(/^##\s*/m)
+        .slice(1)
+        .reduce((rubric, item) => {
+          const [, name, content] = item.match(/(.*?)\n(.*)/s)!;
+          content.split("\n").forEach(line => {
+            if (!line.match(/^\*\*(-|\+)\d+\*\*/) && line !== "")
+              throw `Error in rubric section (missing points?) (Part: ‘${part}’ · Name: ‘${name}’ · Line: ‘${line}’)`;
+          });
+          return rubric.set(name, content);
+        }, new Map<RubricItemName, RubricItemContent>());
+      const partGradesMappings = gradesSection
+        .split(/^##\s*/m)
+        .slice(1)
+        .reduce((partGradesMappings, entry) => {
+          const [, github, url, rawContent] = entry.match(
+            /\[(.*?)\]\((.*?)\)(.*)/s
+          )!;
+          const content = rawContent
+            .split("\n")
+            .map(line => {
+              if (line.match(/^\*\*(-|\+)\d+\*\*/)) {
+                return line;
+              } else if (line.match(/^\*\*Grader:\*\*/)) {
+                const [, grader] = line.match(/^\*\*Grader:\*\*\s*(.*)/)!;
+                if (!staff.includes(grader))
+                  throw `Grader ‘${grader}’ isn’t a member of GitHub team ‘${process.env.COURSE}-staff’ (Part: ‘${part}’ · Student: ‘${github}’)`;
+                return line;
+              } else if (line === "") {
+                return line;
+              } else if (rubric.has(line)) {
+                return rubric.get(line);
+              } else {
+                throw `Error in grade section (misuse of rubric?) (Part: ‘${part}’ · Student: ‘${github}’ · Line: ‘${line}’)`;
+              }
+            })
+            .join("\n");
+          return partGradesMappings.set(
+            github,
+            `# [${part}](${url})
+  
+${content}
+`
+          );
+        }, new Map<Github, Grade>());
+      partsGradesMappings.push(partGradesMappings);
+    }
+    const aggregatedGradesMappings = partsGradesMappings.reduce(
+      (gradesMappings, partGradesMappings) => {
+        const augmentedGradesMappings = new Map();
+        if (gradesMappings.size !== partGradesMappings.size)
+          throw "Different number of students in the grading files for the different parts of the quiz";
+        for (const github of gradesMappings.keys()) {
+          if (!partGradesMappings.has(github))
+            throw `Student ${github} is in one of the grading files, but not the other.`;
+          augmentedGradesMappings.set(
+            github,
+            gradesMappings.get(github)! + partGradesMappings.get(github)!
+          );
+        }
+        return augmentedGradesMappings;
+      }
+    );
+    const totalsGradesMappings = new Map();
+    for (const [github, grade] of aggregatedGradesMappings) {
+      const points = (grade.match(/^\*\*(-|\+)\d+\*\*/gm) || []).map(point =>
+        Number(point.slice("**".length, point.length - "**".length))
+      );
+      const total = points.reduce((a, b) => a + b, 100);
+      totalsGradesMappings.set(
+        github,
+        `# ${title}
+
+${grade}
+
+---
+
+**Total:** ${total}/100
+
+To accept the grade, close this issue.
+
+To request a regrade, comment on this issue within one week. Mention the grader of the part, for example, if the grader of the part is \`jhu-oose-example-ca\`, mention with \`@jhu-oose-example-ca\`.
+
+/cc @${github}
+`
+      );
+    }
+    for (const [github, grade] of totalsGradesMappings) {
+      try {
+        if (
+          (await octokit.paginate(
+            octokit.issues.listForRepo.endpoint.merge({
+              owner: "jhu-oose",
+              repo: `${process.env.COURSE}-student-${github}`
+            })
+          )).find(
+            issue => issue.title === `Grade for quiz`
+          ) === undefined
+        ) {
+          await octokit.issues.create({
+            owner: "jhu-oose",
+            repo: `${process.env.COURSE}-student-${github}`,
+            title: `Grade for quiz`,
+            body: grade
+          });
+        }
+      } catch (e) {
+        console.log(`Problem with student ‘${github}’: ${e}`);
+      }
+    }
+    await octokit.issues.updateMilestone({
+      owner: "jhu-oose",
+      repo: `${process.env.COURSE}-staff`,
+      milestone_number: (await octokit.paginate(
+        octokit.issues.listMilestonesForRepo.endpoint.merge({
+          owner: "jhu-oose",
+          repo: `${process.env.COURSE}-staff`
+        })
+      )).find(
+        milestone =>
+          milestone.title === `Grade quiz`
+      ).number,
+      state: "closed"
+    });
+  });
+
 program.command("feedbacks:read").action(async () => {
   const octokit = robooseOctokit();
   const feedbacks = (await octokit.paginate(
