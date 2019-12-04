@@ -135,7 +135,7 @@ export = (app: Application) => {
         repo: `${process.env.COURSE}-student-${github}`,
         title: `Assignment ${assignment} received`,
         body: `${serialize(submission)}
-        
+
 /cc @${github}
 `
       });

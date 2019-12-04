@@ -511,7 +511,7 @@ program
           return partGradesMappings.set(
             github,
             `# [${part}](${url})
-  
+
 ${content}
 `
           );
@@ -794,7 +794,7 @@ program
           return partGradesMappings.set(
             github,
             `# [${part}](${url})
-  
+
 ${content}
 `
           );
