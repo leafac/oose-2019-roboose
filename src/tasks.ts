@@ -237,7 +237,7 @@ program.command("students:profiles:open").action(async github => {
 
 program
   .command("assignments:templates:add <assignment>")
-  .description("add assignment starter template to students’s repositories")
+  .description("add assignment starter template to students repositories")
   .action(async assignment => {
     const octokit = robooseOctokit();
     const repositories = await octokit.paginate(
@@ -928,7 +928,7 @@ program.command("groups:delete <identifier>").action(async identifier => {
 
 program
   .command("iterations:template <document>")
-  .description("add document starter template to groups’s repositories")
+  .description("add document starter template to groups repositories")
   .action(async document => {
     const octokit = robooseOctokit();
     const repositories = await octokit.paginate(

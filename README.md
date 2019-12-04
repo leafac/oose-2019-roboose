@@ -39,8 +39,8 @@ Roboose is a Probot that not only responds to GitHub events, but also has an [us
 
 ## Teams
 
-Repositories that aren’t Individual Students’s repositories have a [team](https://help.github.com/en/articles/about-teams) associated with them, for example, [2019-staff](https://github.com/orgs/jhu-oose/teams/2019-staff). These teams are necessary for the following reasons:
+Repositories that aren’t Individual Students repositories have a [team](https://help.github.com/en/articles/about-teams) associated with them, for example, [2019-staff](https://github.com/orgs/jhu-oose/teams/2019-staff). These teams are necessary for the following reasons:
 
-**Access Management:** For example, teams make it easier to add staff to all Individual Students’s repositories.
+**Access Management:** For example, teams make it easier to add staff to all Individual Students repositories.
 
 **Team Notifications:** For example, `@jhu-oose/2019-staff`. [Roboose](https://github.com/jhu-oose/roboose) adds team notifications like these automatically when relevant.
