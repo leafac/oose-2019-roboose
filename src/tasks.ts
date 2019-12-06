@@ -856,6 +856,22 @@ program.command("feedbacks:read").action(async () => {
 ---
 `);
   }
+  for (const feedback of feedbacks) {
+    if (feedback.feedback.course !== undefined) {
+      console.log(`**Course Recommend:** ${feedback.feedback.course.recommend}
+
+**Course Liked:** ${feedback.feedback.course.liked}
+
+**Course Improved:** ${feedback.feedback.course.improved}
+
+**Staff Liked:** ${feedback.feedback.course.staff.liked}
+
+**Staff Comment:** ${feedback.feedback.course.staff["open-ended"]}
+
+---
+`);
+    }
+  }
 });
 
 program.command("groups:delete <identifier>").action(async identifier => {
