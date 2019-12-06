@@ -82,66 +82,26 @@ program
       permission: "pull"
     });
 
-    console.log(
-      `ISSUE_STUDENTS=${
-        (await octokit.issues.create({
+    for (const title of [
+      "Students",
+      "Assignments",
+      "Feedbacks",
+      "Groups",
+      "Iterations"
+    ]) {
+      const issue = (await octokit.issues.create({
           owner: "jhu-oose",
           repo: `${process.env.COURSE}-staff`,
-          title: "Students",
+        title,
           labels: ["data"]
-        })).data.number
-      }`
-    );
-    console.log(
-      `ISSUE_ASSIGNMENTS=${
-        (await octokit.issues.create({
+      })).data.number;
+      await octokit.issues.update({
           owner: "jhu-oose",
           repo: `${process.env.COURSE}-staff`,
-          title: "Assignments",
-          labels: ["data"]
-        })).data.number
-      }`
-    );
-    console.log(
-      `ISSUE_FEEDBACKS=${
-        (await octokit.issues.create({
-          owner: "jhu-oose",
-          repo: `${process.env.COURSE}-staff`,
-          title: "Feedbacks",
-          labels: ["data"]
-        })).data.number
-      }`
-    );
-    console.log(
-      `ISSUE_GROUPS=${
-        (await octokit.issues.create({
-          owner: "jhu-oose",
-          repo: `${process.env.COURSE}-staff`,
-          title: "Groups",
-          labels: ["data"]
-        })).data.number
-      }`
-    );
-    console.log(
-      `ISSUE_ITERATIONS=${
-        (await octokit.issues.create({
-          owner: "jhu-oose",
-          repo: `${process.env.COURSE}-staff`,
-          title: "Iterations",
-          labels: ["data"]
-        })).data.number
-      }`
-    );
-    console.log(
-      `ISSUE_SELF_REVIEWS=${
-        (await octokit.issues.create({
-          owner: "jhu-oose",
-          repo: `${process.env.COURSE}-staff`,
-          title: "Self Reviews",
-          labels: ["data"]
-        })).data.number
-      }`
-    );
+        issue_number: issue
+      });
+      console.log(`ISSUE_${title.toUpperCase()}=${issue}`);
+    }
   });
 
 program.command("students:check:registration").action(async () => {
@@ -715,9 +675,7 @@ ${githubs
   }
 });
 
-program
-  .command("quiz:grades:publish")
-  .action(async () => {
+program.command("quiz:grades:publish").action(async () => {
     const octokit = robooseOctokit();
     const staff = (await octokit.paginate(
       octokit.teams.listMembers.endpoint.merge({
@@ -849,9 +807,7 @@ To request a regrade, comment on this issue within one week. Mention the grader 
               owner: "jhu-oose",
               repo: `${process.env.COURSE}-student-${github}`
             })
-          )).find(
-            issue => issue.title === `Grade for quiz`
-          ) === undefined
+        )).find(issue => issue.title === `Grade for quiz`) === undefined
         ) {
           await octokit.issues.create({
             owner: "jhu-oose",
@@ -872,10 +828,7 @@ To request a regrade, comment on this issue within one week. Mention the grader 
           owner: "jhu-oose",
           repo: `${process.env.COURSE}-staff`
         })
-      )).find(
-        milestone =>
-          milestone.title === `Grade quiz`
-      ).number,
+    )).find(milestone => milestone.title === `Grade quiz`).number,
       state: "closed"
     });
   });
