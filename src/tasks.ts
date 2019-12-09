@@ -125,16 +125,6 @@ program.command("students:check:registration").action(async () => {
 });
 
 program.command("students:check:hopkins").action(async () => {
-  const configuration = JSON.parse(
-    Buffer.from(
-      (await octokit.repos.getContents({
-        owner: "jhu-oose",
-        repo: `${process.env.COURSE}-staff`,
-        path: "configuration.json"
-      })).data.content,
-      "base64"
-    ).toString()
-  );
   const students = (await octokit.paginate(
     octokit.issues.listComments.endpoint.merge({
       owner: "jhu-oose",
@@ -874,16 +864,6 @@ program
     ))
       .map(deserializeResponse)
       .filter(submission => submission.iteration === iteration);
-    const configuration = JSON.parse(
-      Buffer.from(
-        (await octokit.repos.getContents({
-          owner: "jhu-oose",
-          repo: `${process.env.COURSE}-staff`,
-          path: "configuration.json"
-        })).data.content,
-        "base64"
-      ).toString()
-    );
     const template = Buffer.from(
       (await octokit.repos.getContents({
         owner: "jhu-oose",
@@ -996,6 +976,22 @@ const octokit = new (Octokit.plugin([pluginThrottling, pluginRetry]))({
     onAbuseLimit: () => true
   }
 });
+
+let configuration: any;
+try {
+  (async function() {
+    configuration = JSON.parse(
+      Buffer.from(
+        (await octokit.repos.getContents({
+          owner: "jhu-oose",
+          repo: `${process.env.COURSE}-staff`,
+          path: "configuration.json"
+        })).data.content,
+        "base64"
+      ).toString()
+    );
+  })();
+} catch {}
 
 function serialize(data: any): string {
   return `\`\`\`json
