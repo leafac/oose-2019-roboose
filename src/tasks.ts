@@ -125,6 +125,7 @@ program.command("students:check:registration").action(async () => {
 });
 
 program.command("students:check:hopkins").action(async () => {
+  const configuration = await getConfiguration();
   const students = (await octokit.paginate(
     octokit.issues.listComments.endpoint.merge({
       owner: "jhu-oose",
@@ -167,12 +168,7 @@ program.command("students:delete <github>").action(async github => {
 });
 
 program.command("students:profiles:open").action(async () => {
-  const repositories = await octokit.paginate(
-    octokit.search.repos.endpoint.merge({
-      q: `jhu-oose/${process.env.COURSE}-student-`
-    })
-  );
-  for (const { name: repo } of repositories) {
+  for (const { name: repo } of await getStudentsRepositories()) {
     await open(`https://github.com/jhu-oose/${repo}`);
     await inquirer.prompt([
       { name: "Press ENTER to open next student’s profile" }
@@ -191,12 +187,7 @@ program
       })).data.content,
       "base64"
     ).toString();
-    const repositories = await octokit.paginate(
-      octokit.search.repos.endpoint.merge({
-        q: `jhu-oose/${process.env.COURSE}-student-`
-      })
-    );
-    for (const { name: repo } of repositories) {
+    for (const { name: repo } of await getStudentsRepositories()) {
       try {
         await octokit.repos.createOrUpdateFile({
           owner: "jhu-oose",
@@ -853,12 +844,7 @@ program
     "run this when iteration is due to put group projects in database"
   )
   .action(async iteration => {
-    const repositories = await octokit.paginate(
-      octokit.search.repos.endpoint.merge({
-        q: `jhu-oose/${process.env.COURSE}-group-`
-      })
-    );
-    for (const { name } of repositories) {
+    for (const { name } of await getGroupsRepositories()) {
       const github = name.slice(`${process.env.COURSE}-group-`.length);
       const commit = (await octokit.repos.getCommit({
         owner: "jhu-oose",
@@ -892,6 +878,7 @@ program
 program
   .command("iterations:reviews:start <iteration>")
   .action(async iteration => {
+    const configuration = await getConfiguration();
     const submissions = (await octokit.paginate(
       octokit.issues.listComments.endpoint.merge({
         owner: "jhu-oose",
@@ -1015,21 +1002,34 @@ const octokit = new (Octokit.plugin([pluginThrottling, pluginRetry]))({
   }
 });
 
-let configuration: any;
-try {
-  (async function() {
-    configuration = JSON.parse(
-      Buffer.from(
-        (await octokit.repos.getContents({
-          owner: "jhu-oose",
-          repo: `${process.env.COURSE}-staff`,
-          path: "configuration.json"
-        })).data.content,
-        "base64"
-      ).toString()
-    );
-  })();
-} catch {}
+async function getConfiguration(): Promise<any> {
+  return JSON.parse(
+    Buffer.from(
+      (await octokit.repos.getContents({
+        owner: "jhu-oose",
+        repo: `${process.env.COURSE}-staff`,
+        path: "configuration.json"
+      })).data.content,
+      "base64"
+    ).toString()
+  );
+}
+
+async function getStudentsRepositories(): Promise<any[]> {
+  return await octokit.paginate(
+    octokit.search.repos.endpoint.merge({
+      q: `jhu-oose/${process.env.COURSE}-student-`
+    })
+  );
+}
+
+async function getGroupsRepositories(): Promise<any[]> {
+  return await octokit.paginate(
+    octokit.search.repos.endpoint.merge({
+      q: `jhu-oose/${process.env.COURSE}-group-`
+    })
+  );
+}
 
 function serialize(data: any): string {
   return `\`\`\`json
