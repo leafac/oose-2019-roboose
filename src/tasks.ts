@@ -166,7 +166,7 @@ program.command("students:delete <github>").action(async github => {
   } catch {}
 });
 
-program.command("students:profiles:open").action(async github => {
+program.command("students:profiles:open").action(async () => {
   const repositories = await octokit.paginate(
     octokit.search.repos.endpoint.merge({
       q: `jhu-oose/${process.env.COURSE}-student-`
@@ -179,6 +179,43 @@ program.command("students:profiles:open").action(async github => {
     ]);
   }
 });
+
+program
+  .command("students:file:upload <source> <destination>")
+  .action(async (source, destination) => {
+    const template = Buffer.from(
+      (await octokit.repos.getContents({
+        owner: "jhu-oose",
+        repo: `${process.env.COURSE}-staff`,
+        path: source
+      })).data.content,
+      "base64"
+    ).toString();
+    const repositories = await octokit.paginate(
+      octokit.search.repos.endpoint.merge({
+        q: `jhu-oose/${process.env.COURSE}-student-`
+      })
+    );
+    for (const { name: repo } of repositories) {
+      try {
+        await octokit.repos.createOrUpdateFile({
+          owner: "jhu-oose",
+          repo,
+          path: destination,
+          message: `Add ${destination}`,
+          content: Buffer.from(render(template)).toString("base64")
+        });
+      } catch (error) {
+        console.log(`Error with repository ${repo}: ${error}`);
+      }
+    }
+    await octokit.issues.create({
+      owner: "jhu-oose",
+      repo: `${process.env.COURSE}-students`,
+      title: `File ${destination} added to your personal repository`,
+      body: `/cc @jhu-oose/${process.env.COURSE}-students`
+    });
+  });
 
 program
   .command("assignments:submissions:add <assignment> <github> <commit> <time>")
@@ -879,13 +916,14 @@ program
     })).data.number;
     for (const { iteration, github, commit } of submissions) {
       const advisor = configuration.advisors[github];
-      const renderedTemplate = render(template, { github, commit, advisor });
       await octokit.repos.createOrUpdateFile({
         owner: "jhu-oose",
         repo: `${process.env.COURSE}-staff`,
         path: `grades/iterations/${iteration}/${github}.md`,
         message: `Review group project iteration ${iteration}: ${github}`,
-        content: Buffer.from(renderedTemplate).toString("base64")
+        content: Buffer.from(
+          render(template, { github, commit, advisor })
+        ).toString("base64")
       });
       await octokit.issues.create({
         owner: "jhu-oose",
