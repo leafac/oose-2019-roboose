@@ -17,7 +17,6 @@ program
     "create the teams and repositories for staff and students, and the issues that serve as a database"
   )
   .action(async () => {
-    const octokit = robooseOctokit();
     await octokit.teams.create({
       org: "jhu-oose",
       name: `${process.env.COURSE}-students`,
@@ -105,7 +104,6 @@ program
   });
 
 program.command("students:check:registration").action(async () => {
-  const octokit = robooseOctokit();
   const students = (await octokit.paginate(
     octokit.issues.listComments.endpoint.merge({
       owner: "jhu-oose",
@@ -127,7 +125,6 @@ program.command("students:check:registration").action(async () => {
 });
 
 program.command("students:check:hopkins").action(async () => {
-  const octokit = robooseOctokit();
   const configuration = JSON.parse(
     Buffer.from(
       (await octokit.repos.getContents({
@@ -159,7 +156,6 @@ program.command("students:check:hopkins").action(async () => {
 });
 
 program.command("students:delete <github>").action(async github => {
-  const octokit = robooseOctokit();
   console.log(
     `You must manually remove the student data from https://github.com/jhu-oose/${process.env.COURSE}-staff/issues/${process.env.ISSUE_STUDENTS}`
   );
@@ -181,7 +177,6 @@ program.command("students:delete <github>").action(async github => {
 });
 
 program.command("students:profiles:open").action(async github => {
-  const octokit = robooseOctokit();
   const repositories = await octokit.paginate(
     octokit.search.repos.endpoint.merge({
       q: `jhu-oose/${process.env.COURSE}-student-`
@@ -198,7 +193,6 @@ program.command("students:profiles:open").action(async github => {
 program
   .command("assignments:submissions:add <assignment> <github> <commit> <time>")
   .action(async (assignment, github, commit, time) => {
-    const octokit = robooseOctokit();
     await octokit.repos.getContents({
       owner: "jhu-oose",
       repo: `${process.env.COURSE}-student-${github}`,
@@ -231,7 +225,6 @@ program
 program
   .command("assignments:submissions:check <github>")
   .action(async github => {
-    const octokit = robooseOctokit();
     const submissions = (await octokit.paginate(
       octokit.issues.listComments.endpoint.merge({
         owner: "jhu-oose",
@@ -249,7 +242,6 @@ program
 program
   .command("assignments:grades:start <assignment>")
   .action(async assignment => {
-    const octokit = robooseOctokit();
     const allSubmissions = (await octokit.paginate(
       octokit.issues.listComments.endpoint.merge({
         owner: "jhu-oose",
@@ -335,7 +327,6 @@ ${submissions
 program
   .command("assignments:grades:publish <assignment>")
   .action(async assignment => {
-    const octokit = robooseOctokit();
     const staff = (await octokit.paginate(
       octokit.teams.listMembers.endpoint.merge({
         team_id: (await octokit.teams.getByName({
@@ -500,7 +491,6 @@ To request a regrade, comment on this issue within one week. Mention the grader 
 program
   .command("quiz:submissions:add <path-to-scanned-pdfs>")
   .action(async pathToScannedPdfs => {
-    const octokit = robooseOctokit();
     const pdfs = fs
       .readdirSync(pathToScannedPdfs)
       .filter(file => file.endsWith(".pdf"));
@@ -524,7 +514,6 @@ program
   });
 
 program.command("quiz:submissions:check").action(async () => {
-  const octokit = robooseOctokit();
   const githubs = (await octokit.paginate(
     octokit.teams.listMembers.endpoint.merge({
       team_id: (await octokit.teams.getByName({
@@ -547,7 +536,6 @@ program.command("quiz:submissions:check").action(async () => {
 });
 
 program.command("quiz:grades:start").action(async () => {
-  const octokit = robooseOctokit();
   const githubs = (await octokit.paginate(
     octokit.teams.listMembers.endpoint.merge({
       team_id: (await octokit.teams.getByName({
@@ -616,7 +604,6 @@ ${githubs
 });
 
 program.command("quiz:grades:publish").action(async () => {
-  const octokit = robooseOctokit();
   const staff = (await octokit.paginate(
     octokit.teams.listMembers.endpoint.merge({
       team_id: (await octokit.teams.getByName({
@@ -774,7 +761,6 @@ To request a regrade, comment on this issue within one week. Mention the grader 
 });
 
 program.command("feedbacks:read").action(async () => {
-  const octokit = robooseOctokit();
   const feedbacks = (await octokit.paginate(
     octokit.issues.listComments.endpoint.merge({
       owner: "jhu-oose",
@@ -815,7 +801,6 @@ program.command("feedbacks:read").action(async () => {
 });
 
 program.command("groups:delete <identifier>").action(async identifier => {
-  const octokit = robooseOctokit();
   console.log(
     `You must manually remove the group data from https://github.com/jhu-oose/${process.env.COURSE}-staff/issues/${process.env.ISSUE_GROUPS}`
   );
@@ -841,7 +826,6 @@ program
     "run this when iteration is due to put group projects in database"
   )
   .action(async iteration => {
-    const octokit = robooseOctokit();
     const repositories = await octokit.paginate(
       octokit.search.repos.endpoint.merge({
         q: `jhu-oose/${process.env.COURSE}-group-`
@@ -881,7 +865,6 @@ program
 program
   .command("iterations:reviews:start <iteration>")
   .action(async iteration => {
-    const octokit = robooseOctokit();
     const submissions = (await octokit.paginate(
       octokit.issues.listComments.endpoint.merge({
         owner: "jhu-oose",
@@ -942,7 +925,6 @@ program
 program
   .command("iterations:reviews:publish <iteration>")
   .action(async iteration => {
-    const octokit = robooseOctokit();
     const reviews = (await octokit.repos.getContents({
       owner: "jhu-oose",
       repo: `${process.env.COURSE}-staff`,
@@ -994,30 +976,26 @@ You may get some points back for things that you fix, and you have to discuss th
 program
   .command("one-off")
   .description("hack task to run locally (never commit changes to this)")
-  .action(async () => {
-    const octokit = robooseOctokit();
-  });
+  .action(async () => {});
 
 dotenv.config();
 
-function robooseOctokit(): Octokit {
-  return new (Octokit.plugin([pluginThrottling, pluginRetry]))({
-    async auth() {
-      const app = new App({
-        id: Number(process.env.APP_ID),
-        privateKey: String(process.env.PRIVATE_KEY)
-      });
-      const installationAccessToken = await app.getInstallationAccessToken({
-        installationId: Number(process.env.INSTALLATION_ID)
-      });
-      return `token ${installationAccessToken}`;
-    },
-    throttle: {
-      onRateLimit: () => true,
-      onAbuseLimit: () => true
-    }
-  });
-}
+const octokit = new (Octokit.plugin([pluginThrottling, pluginRetry]))({
+  async auth() {
+    const app = new App({
+      id: Number(process.env.APP_ID),
+      privateKey: String(process.env.PRIVATE_KEY)
+    });
+    const installationAccessToken = await app.getInstallationAccessToken({
+      installationId: Number(process.env.INSTALLATION_ID)
+    });
+    return `token ${installationAccessToken}`;
+  },
+  throttle: {
+    onRateLimit: () => true,
+    onAbuseLimit: () => true
+  }
+});
 
 function serialize(data: any): string {
   return `\`\`\`json
