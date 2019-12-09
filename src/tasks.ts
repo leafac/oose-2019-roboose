@@ -877,9 +877,9 @@ program
       repo: `${process.env.COURSE}-staff`,
       title: `Review group project iteration ${iteration}`
     })).data.number;
-    for (const { iteration, github, commit, time } of submissions) {
+    for (const { iteration, github, commit } of submissions) {
       const advisor = configuration.advisors[github];
-      const renderedTemplate = eval(`\`${template.replace(/`/g, "\\`")}\``);
+      const renderedTemplate = render(template, { github, commit, advisor });
       await octokit.repos.createOrUpdateFile({
         owner: "jhu-oose",
         repo: `${process.env.COURSE}-staff`,
@@ -1015,6 +1015,13 @@ function deserializeResponse(response: { body: string }): any {
 
 function slugify(string: string): string {
   return slugifyOriginal(string, { lower: true });
+}
+
+function render(template: string, scope: object = {}): string {
+  return new Function(
+    ...Object.keys(scope),
+    `return \`${template.replace(/`/g, "\\`")}\`;`
+  )(...Object.values(scope));
 }
 
 program.command("*").action(() => {
