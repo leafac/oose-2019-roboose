@@ -187,7 +187,7 @@ program
           repo,
           path: destination,
           message: `Add ${destination}`,
-          content: Buffer.from(render(template)).toString("base64")
+          content: render(template)
         });
       } catch (error) {
         console.log(`Error with repository ${repo}: ${error}`);
@@ -828,9 +828,7 @@ program
         repo: `${process.env.COURSE}-staff`,
         path: `grades/iterations/${iteration}/${github}.md`,
         message: `Review group project iteration ${iteration}: ${github}`,
-        content: Buffer.from(
-          render(template, { github, commit, advisor })
-        ).toString("base64")
+        content: render(template, { github, commit, advisor })
       });
       await octokit.issues.create({
         owner: "jhu-oose",
@@ -976,10 +974,12 @@ function slugify(string: string): string {
 }
 
 function render(template: string, scope: object = {}): string {
-  return new Function(
-    ...Object.keys(scope),
-    `return \`${template.replace(/`/g, "\\`")}\`;`
-  )(...Object.values(scope));
+  return Buffer.from(
+    new Function(
+      ...Object.keys(scope),
+      `return \`${template.replace(/`/g, "\\`")}\`;`
+    )(...Object.values(scope))
+  ).toString("base64");
 }
 
 program.command("*").action(() => {
