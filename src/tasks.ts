@@ -177,7 +177,7 @@ program.command("students:profiles:open").action(async () => {
 });
 
 program
-  .command("students:file:upload <source> <destination>")
+  .command("students:files:upload <source> <destination>")
   .action(async (source, destination) => {
     const template = await getFile(source);
     for (const { name: repo } of await getStudentsRepositories()) {
@@ -204,7 +204,7 @@ program
     });
   });
 
-program.command("students:file:check <path>").action(async path => {
+program.command("students:files:check <path>").action(async path => {
   for (const { name: repo } of await getStudentsRepositories()) {
     try {
       await octokit.repos.getContents({
@@ -783,7 +783,7 @@ program.command("groups:delete <identifier>").action(async identifier => {
 });
 
 program
-  .command("groups:file:upload <source> <destination>")
+  .command("groups:files:upload <source> <destination>")
   .action(async (source, destination) => {
     const template = await getFile(source);
     for (const { name: repo } of await getGroupsRepositories()) {
@@ -810,7 +810,7 @@ program
     });
   });
 
-program.command("groups:file:check <path>").action(async path => {
+program.command("groups:files:check <path>").action(async path => {
   for (const { name: repo } of await getGroupsRepositories()) {
     try {
       await octokit.repos.getContents({
