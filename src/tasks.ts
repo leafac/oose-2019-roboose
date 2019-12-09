@@ -196,66 +196,6 @@ program.command("students:profiles:open").action(async github => {
 });
 
 program
-  .command("assignments:templates:add <assignment>")
-  .description("add assignment starter template to students repositories")
-  .action(async assignment => {
-    const octokit = robooseOctokit();
-    const repositories = await octokit.paginate(
-      octokit.search.repos.endpoint.merge({
-        q: `jhu-oose/${process.env.COURSE}-student-`
-      })
-    );
-    for (const { name: repo } of repositories) {
-      try {
-        await octokit.repos.createOrUpdateFile({
-          owner: "jhu-oose",
-          repo,
-          path: `assignments/${assignment}.md`,
-          message: `Add Assignment ${assignment} template`,
-          content: (await octokit.repos.getContents({
-            owner: "jhu-oose",
-            repo: `${process.env.COURSE}-staff`,
-            path: `templates/assignments/${assignment}.md`
-          })).data.content
-        });
-      } catch (error) {
-        console.log(`Error with repository ${repo}: ${error}`);
-      }
-    }
-    await octokit.issues.create({
-      owner: "jhu-oose",
-      repo: `${process.env.COURSE}-students`,
-      title: `Assignment ${assignment} template added`,
-      body: `See \`assignments/${assignment}.md\` in your personal repository.
-
-/cc @jhu-oose/${process.env.COURSE}-students
-`
-    });
-  });
-
-program
-  .command("assignments:templates:check <assignment>")
-  .action(async assignment => {
-    const octokit = robooseOctokit();
-    const repositories = await octokit.paginate(
-      octokit.search.repos.endpoint.merge({
-        q: `jhu-oose/${process.env.COURSE}-student-`
-      })
-    );
-    for (const { name: repo } of repositories) {
-      try {
-        await octokit.repos.getContents({
-          owner: "jhu-oose",
-          repo,
-          path: `assignments/${assignment}.md`
-        });
-      } catch (error) {
-        console.log(`Error with repository ${repo}: ${error}`);
-      }
-    }
-  });
-
-program
   .command("assignments:submissions:add <assignment> <github> <commit> <time>")
   .action(async (assignment, github, commit, time) => {
     const octokit = robooseOctokit();
@@ -894,44 +834,6 @@ program.command("groups:delete <identifier>").action(async identifier => {
     });
   } catch {}
 });
-
-program
-  .command("iterations:template <document>")
-  .description("add document starter template to groups repositories")
-  .action(async document => {
-    const octokit = robooseOctokit();
-    const repositories = await octokit.paginate(
-      octokit.search.repos.endpoint.merge({
-        q: `jhu-oose/${process.env.COURSE}-group-`
-      })
-    );
-    for (const { name: repo } of repositories) {
-      try {
-        await octokit.repos.createOrUpdateFile({
-          owner: "jhu-oose",
-          repo,
-          path: `docs/${document}.md`,
-          message: `Add ${document} template`,
-          content: (await octokit.repos.getContents({
-            owner: "jhu-oose",
-            repo: `${process.env.COURSE}-staff`,
-            path: `templates/group-projects/${document}.md`
-          })).data.content
-        });
-      } catch (error) {
-        console.log(`Error with repository ${repo}: ${error}`);
-      }
-    }
-    await octokit.issues.create({
-      owner: "jhu-oose",
-      repo: `${process.env.COURSE}-students`,
-      title: `Document ‘${document}’ template added`,
-      body: `See \`docs/${document}.md\` in your group repository.
-
-/cc @jhu-oose/${process.env.COURSE}-students
-`
-    });
-  });
 
 program
   .command("iterations:collect <iteration>")
