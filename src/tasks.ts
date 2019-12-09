@@ -197,7 +197,10 @@ program
       owner: "jhu-oose",
       repo: `${process.env.COURSE}-students`,
       title: `File ${destination} added to your personal repository`,
-      body: `/cc @jhu-oose/${process.env.COURSE}-students`
+      body: `See \`https://github.com/jhu-oose/${process.env.COURSE}-student-<your-github-identifier>/blob/master/${destination}\`.
+
+/cc @jhu-oose/${process.env.COURSE}-students
+`
     });
   });
 
@@ -777,6 +780,48 @@ program.command("groups:delete <identifier>").action(async identifier => {
       repo: `${process.env.COURSE}-group-${identifier}`
     });
   } catch {}
+});
+
+program
+  .command("groups:file:upload <source> <destination>")
+  .action(async (source, destination) => {
+    const template = await getFile(source);
+    for (const { name: repo } of await getGroupsRepositories()) {
+      try {
+        await octokit.repos.createOrUpdateFile({
+          owner: "jhu-oose",
+          repo,
+          path: destination,
+          message: `Add ${destination}`,
+          content: render(template)
+        });
+      } catch (error) {
+        console.log(`Error with repository ${repo}: ${error}`);
+      }
+    }
+    await octokit.issues.create({
+      owner: "jhu-oose",
+      repo: `${process.env.COURSE}-students`,
+      title: `File ${destination} added to your group repository`,
+      body: `See \`https://github.com/jhu-oose/${process.env.COURSE}-group-<your-group-identifier>/blob/master/${destination}\`.
+
+/cc @jhu-oose/${process.env.COURSE}-students
+`
+    });
+  });
+
+program.command("groups:file:check <path>").action(async path => {
+  for (const { name: repo } of await getGroupsRepositories()) {
+    try {
+      await octokit.repos.getContents({
+        owner: "jhu-oose",
+        repo,
+        path
+      });
+    } catch (error) {
+      console.log(`Error with repository ${repo}: ${error}`);
+    }
+  }
 });
 
 program
