@@ -60,7 +60,7 @@ export = (app: Application) => {
         content: (await octokit.repos.getContents({
           owner: "jhu-oose",
           repo: `${process.env.COURSE}-staff`,
-          path: "templates/README.md"
+          path: "templates/students/README.md"
         })).data.content
       });
       await octokit.repos.createOrUpdateFile({
@@ -71,18 +71,7 @@ export = (app: Application) => {
         content: (await octokit.repos.getContents({
           owner: "jhu-oose",
           repo: `${process.env.COURSE}-staff`,
-          path: "templates/assignments/0.md"
-        })).data.content
-      });
-      await octokit.repos.createOrUpdateFile({
-        owner: "jhu-oose",
-        repo: `${process.env.COURSE}-student-${github}`,
-        path: "assignments/1.md",
-        message: "Add Assignment 1 template",
-        content: (await octokit.repos.getContents({
-          owner: "jhu-oose",
-          repo: `${process.env.COURSE}-staff`,
-          path: "templates/assignments/1.md"
+          path: "templates/students/assignments/0.md"
         })).data.content
       });
       res.redirect(
@@ -225,7 +214,7 @@ export = (app: Application) => {
         content: (await octokit.repos.getContents({
           owner: "jhu-oose",
           repo: `${process.env.COURSE}-staff`,
-          path: "templates/group-projects/project-proposal.md"
+          path: "templates/groups/docs/project-proposal.md"
         })).data.content
       });
       res.redirect("https://www.jhu-oose.com/iterations/0/group-registration");

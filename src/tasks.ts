@@ -287,7 +287,7 @@ program
             Date.parse(submission.time) < Date.parse(otherSubmission.time)
         )
     );
-    const parts = (await getFile(`templates/assignments/${assignment}.md`))
+    const parts = (await getFile(`templates/students/assignments/${assignment}.md`))
       .match(/^# .*/gm)!
       .slice(1)
       .map(heading => heading.slice("# ".length));
@@ -356,7 +356,7 @@ program
       })
     )).map(member => member.login);
     const [title, ...parts] = (await getFile(
-      `templates/assignments/${assignment}.md`
+      `templates/students/assignments/${assignment}.md`
     ))
       .match(/^# .*/gm)!
       .map(heading => heading.slice("# ".length));
@@ -529,7 +529,7 @@ program.command("quiz:grades:start").action(async () => {
       })).data.id
     })
   )).map(s => s.login);
-  const parts = (await getFile("templates/quiz.md"))
+  const parts = (await getFile("templates/students/quiz.md"))
     .match(/^# .*/gm)!
     .slice(1)
     .map(heading => heading.slice("# ".length));
@@ -589,7 +589,7 @@ program.command("quiz:grades:publish").action(async () => {
       })).data.id
     })
   )).map(member => member.login);
-  const [title, ...parts] = (await getFile("templates/quiz.md"))
+  const [title, ...parts] = (await getFile("templates/students/quiz.md"))
     .match(/^# .*/gm)!
     .map(heading => heading.slice("# ".length));
   type Github = string;
@@ -874,7 +874,7 @@ program
     ))
       .map(deserializeResponse)
       .filter(submission => submission.iteration === iteration);
-    const template = await getFile(`templates/iterations/${iteration}.md`);
+    const template = await getFile(`templates/groups/iterations/${iteration}.md`);
     const milestone = (await octokit.issues.createMilestone({
       owner: "jhu-oose",
       repo: `${process.env.COURSE}-staff`,
