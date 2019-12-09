@@ -179,14 +179,7 @@ program.command("students:profiles:open").action(async () => {
 program
   .command("students:file:upload <source> <destination>")
   .action(async (source, destination) => {
-    const template = Buffer.from(
-      (await octokit.repos.getContents({
-        owner: "jhu-oose",
-        repo: `${process.env.COURSE}-staff`,
-        path: source
-      })).data.content,
-      "base64"
-    ).toString();
+    const template = await getFile(source);
     for (const { name: repo } of await getStudentsRepositories()) {
       try {
         await octokit.repos.createOrUpdateFile({
@@ -277,15 +270,7 @@ program
             Date.parse(submission.time) < Date.parse(otherSubmission.time)
         )
     );
-    const parts = Buffer.from(
-      (await octokit.repos.getContents({
-        owner: "jhu-oose",
-        repo: `${process.env.COURSE}-staff`,
-        path: `templates/assignments/${assignment}.md`
-      })).data.content,
-      "base64"
-    )
-      .toString()
+    const parts = (await getFile(`templates/assignments/${assignment}.md`))
       .match(/^# .*/gm)!
       .slice(1)
       .map(heading => heading.slice("# ".length));
@@ -353,31 +338,18 @@ program
         })).data.id
       })
     )).map(member => member.login);
-    const [title, ...parts] = Buffer.from(
-      (await octokit.repos.getContents({
-        owner: "jhu-oose",
-        repo: `${process.env.COURSE}-staff`,
-        path: `templates/assignments/${assignment}.md`
-      })).data.content,
-      "base64"
-    )
-      .toString()
+    const [title, ...parts] = (await getFile(
+      `templates/assignments/${assignment}.md`
+    ))
       .match(/^# .*/gm)!
       .map(heading => heading.slice("# ".length));
     type Github = string;
     type Grade = string;
     const partsGradesMappings = new Array<Map<Github, Grade>>();
     for (const part of parts) {
-      const [, rubricSection, gradesSection] = Buffer.from(
-        (await octokit.repos.getContents({
-          owner: "jhu-oose",
-          repo: `${process.env.COURSE}-staff`,
-          path: `grades/assignments/${assignment}/${slugify(part)}.md`
-        })).data.content,
-        "base64"
-      )
-        .toString()
-        .match(/^# Rubric(.*)^# Grades(.*)/ms)!;
+      const [, rubricSection, gradesSection] = (await getFile(
+        `grades/assignments/${assignment}/${slugify(part)}.md`
+      )).match(/^# Rubric(.*)^# Grades(.*)/ms)!;
       type RubricItemName = string;
       type RubricItemContent = string;
       const rubric = rubricSection
@@ -531,28 +503,6 @@ program
     }
   });
 
-program.command("quiz:submissions:check").action(async () => {
-  const githubs = (await octokit.paginate(
-    octokit.teams.listMembers.endpoint.merge({
-      team_id: (await octokit.teams.getByName({
-        org: "jhu-oose",
-        team_slug: `${process.env.COURSE}-students`
-      })).data.id
-    })
-  )).map(s => s.login);
-  for (const github of githubs) {
-    try {
-      await octokit.repos.getContents({
-        owner: "jhu-oose",
-        repo: `${process.env.COURSE}-student-${github}`,
-        path: `quiz.pdf`
-      });
-    } catch (error) {
-      console.log(`Error with student ${github}: ${error}`);
-    }
-  }
-});
-
 program.command("quiz:grades:start").action(async () => {
   const githubs = (await octokit.paginate(
     octokit.teams.listMembers.endpoint.merge({
@@ -562,15 +512,7 @@ program.command("quiz:grades:start").action(async () => {
       })).data.id
     })
   )).map(s => s.login);
-  const parts = Buffer.from(
-    (await octokit.repos.getContents({
-      owner: "jhu-oose",
-      repo: `${process.env.COURSE}-staff`,
-      path: `templates/quiz.md`
-    })).data.content,
-    "base64"
-  )
-    .toString()
+  const parts = (await getFile("templates/quiz.md"))
     .match(/^# .*/gm)!
     .slice(1)
     .map(heading => heading.slice("# ".length));
@@ -630,31 +572,16 @@ program.command("quiz:grades:publish").action(async () => {
       })).data.id
     })
   )).map(member => member.login);
-  const [title, ...parts] = Buffer.from(
-    (await octokit.repos.getContents({
-      owner: "jhu-oose",
-      repo: `${process.env.COURSE}-staff`,
-      path: `templates/quiz.md`
-    })).data.content,
-    "base64"
-  )
-    .toString()
+  const [title, ...parts] = (await getFile("templates/quiz.md"))
     .match(/^# .*/gm)!
     .map(heading => heading.slice("# ".length));
   type Github = string;
   type Grade = string;
   const partsGradesMappings = new Array<Map<Github, Grade>>();
   for (const part of parts) {
-    const [, rubricSection, gradesSection] = Buffer.from(
-      (await octokit.repos.getContents({
-        owner: "jhu-oose",
-        repo: `${process.env.COURSE}-staff`,
-        path: `grades/quiz/${slugify(part)}.md`
-      })).data.content,
-      "base64"
-    )
-      .toString()
-      .match(/^# Rubric(.*)^# Grades(.*)/ms)!;
+    const [, rubricSection, gradesSection] = (await getFile(
+      `grades/quiz/${slugify(part)}.md`
+    )).match(/^# Rubric(.*)^# Grades(.*)/ms)!;
     type RubricItemName = string;
     type RubricItemContent = string;
     const rubric = rubricSection
@@ -888,14 +815,7 @@ program
     ))
       .map(deserializeResponse)
       .filter(submission => submission.iteration === iteration);
-    const template = Buffer.from(
-      (await octokit.repos.getContents({
-        owner: "jhu-oose",
-        repo: `${process.env.COURSE}-staff`,
-        path: `templates/iterations/${iteration}.md`
-      })).data.content,
-      "base64"
-    ).toString();
+    const template = await getFile(`templates/iterations/${iteration}.md`);
     const milestone = (await octokit.issues.createMilestone({
       owner: "jhu-oose",
       repo: `${process.env.COURSE}-staff`,
@@ -930,25 +850,15 @@ program
 program
   .command("iterations:reviews:publish <iteration>")
   .action(async iteration => {
-    const reviews = (await octokit.repos.getContents({
-      owner: "jhu-oose",
-      repo: `${process.env.COURSE}-staff`,
-      path: `grades/iterations/${iteration}/`
-    })).data;
-    for (const { name, path } of reviews) {
+    for (const { name, path } of await listDirectory(
+      `grades/iterations/${iteration}/`
+    )) {
       const github = name.slice(0, name.length - ".md".length);
       await octokit.issues.create({
         owner: "jhu-oose",
         repo: `${process.env.COURSE}-group-${github}`,
         title: `Review of iteration ${iteration}`,
-        body: `${Buffer.from(
-          (await octokit.repos.getContents({
-            owner: "jhu-oose",
-            repo: `${process.env.COURSE}-staff`,
-            path
-          })).data.content,
-          "base64"
-        ).toString()}
+        body: `${await getFile(path)}
 
 ---
 
@@ -1003,16 +913,7 @@ const octokit = new (Octokit.plugin([pluginThrottling, pluginRetry]))({
 });
 
 async function getConfiguration(): Promise<any> {
-  return JSON.parse(
-    Buffer.from(
-      (await octokit.repos.getContents({
-        owner: "jhu-oose",
-        repo: `${process.env.COURSE}-staff`,
-        path: "configuration.json"
-      })).data.content,
-      "base64"
-    ).toString()
-  );
+  return JSON.parse(await getFile("configuration.json"));
 }
 
 async function getStudentsRepositories(): Promise<any[]> {
@@ -1029,6 +930,25 @@ async function getGroupsRepositories(): Promise<any[]> {
       q: `jhu-oose/${process.env.COURSE}-group-`
     })
   );
+}
+
+async function getFile(path: string): Promise<string> {
+  return Buffer.from(
+    (await octokit.repos.getContents({
+      owner: "jhu-oose",
+      repo: `${process.env.COURSE}-staff`,
+      path
+    })).data.content,
+    "base64"
+  ).toString();
+}
+
+async function listDirectory(path: string): Promise<Octokit.AnyResponse> {
+  return (await octokit.repos.getContents({
+    owner: "jhu-oose",
+    repo: `${process.env.COURSE}-staff`,
+    path
+  })).data;
 }
 
 function serialize(data: any): string {
