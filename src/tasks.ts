@@ -201,6 +201,20 @@ program
     });
   });
 
+program.command("students:file:check <path>").action(async path => {
+  for (const { name: repo } of await getStudentsRepositories()) {
+    try {
+      await octokit.repos.getContents({
+        owner: "jhu-oose",
+        repo,
+        path
+      });
+    } catch (error) {
+      console.log(`Error with repository ${repo}: ${error}`);
+    }
+  }
+});
+
 program
   .command("assignments:submissions:add <assignment> <github> <commit> <time>")
   .action(async (assignment, github, commit, time) => {
