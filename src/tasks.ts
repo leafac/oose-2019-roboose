@@ -287,7 +287,9 @@ program
             Date.parse(submission.time) < Date.parse(otherSubmission.time)
         )
     );
-    const parts = (await getFile(`templates/students/assignments/${assignment}.md`))
+    const parts = (await getFile(
+      `templates/students/assignments/${assignment}.md`
+    ))
       .match(/^# .*/gm)!
       .slice(1)
       .map(heading => heading.slice("# ".length));
@@ -874,7 +876,9 @@ program
     ))
       .map(deserializeResponse)
       .filter(submission => submission.iteration === iteration);
-    const template = await getFile(`templates/groups/iterations/${iteration}.md`);
+    const template = await getFile(
+      `templates/groups/iterations/${iteration}.md`
+    );
     const milestone = (await octokit.issues.createMilestone({
       owner: "jhu-oose",
       repo: `${process.env.COURSE}-staff`,
