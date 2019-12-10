@@ -103,28 +103,7 @@ program
     }
   });
 
-program.command("students:check:registration").action(async () => {
-  const students = (await octokit.paginate(
-    octokit.issues.listComments.endpoint.merge({
-      owner: "jhu-oose",
-      repo: `${process.env.COURSE}-staff`,
-      issue_number: Number(process.env.ISSUE_STUDENTS)
-    })
-  )).map(deserializeResponse);
-  for (const { github, hopkins } of students) {
-    try {
-      await octokit.repos.getContents({
-        owner: "jhu-oose",
-        repo: `${process.env.COURSE}-student-${github}`,
-        path: `assignments/0.md`
-      });
-    } catch (error) {
-      console.log(`Error with student ${github}: ${error}`);
-    }
-  }
-});
-
-program.command("students:check:hopkins").action(async () => {
+program.command("students:check").action(async () => {
   const configuration = await getConfiguration();
   const students = (await octokit.paginate(
     octokit.issues.listComments.endpoint.merge({
@@ -134,15 +113,29 @@ program.command("students:check:hopkins").action(async () => {
     })
   )).map(deserializeResponse);
   for (const { github, hopkins } of students) {
+    await checkFile("assignments/0.md", [
+      { name: `${process.env.COURSE}-student-${github}` }
+    ]);
     if (!configuration.hopkinses.includes(hopkins)) {
       try {
         await octokit.repos.get({
           owner: "jhu-oose",
           repo: `${process.env.COURSE}-student-${github}`
         });
-        console.log(github);
+        console.log(
+          `Student doesn’t appear registered in SIS. GitHub: ${github}. Hopkins: ${hopkins}.`
+        );
       } catch {}
     }
+  }
+});
+
+program.command("students:profiles").action(async () => {
+  for (const { name: repo } of await getStudentsRepositories()) {
+    await open(`https://github.com/jhu-oose/${repo}`);
+    await inquirer.prompt([
+      { name: "Press ENTER to open next student’s profile" }
+    ]);
   }
 });
 
@@ -167,55 +160,19 @@ program.command("students:delete <github>").action(async github => {
   } catch {}
 });
 
-program.command("students:profiles:open").action(async () => {
-  for (const { name: repo } of await getStudentsRepositories()) {
-    await open(`https://github.com/jhu-oose/${repo}`);
-    await inquirer.prompt([
-      { name: "Press ENTER to open next student’s profile" }
-    ]);
-  }
-});
-
 program
   .command("students:files:upload <source> <destination>")
   .action(async (source, destination) => {
-    const template = await getFile(source);
-    for (const { name: repo } of await getStudentsRepositories()) {
-      try {
-        await octokit.repos.createOrUpdateFile({
-          owner: "jhu-oose",
-          repo,
-          path: destination,
-          message: `Add ${destination}`,
-          content: render(template)
-        });
-      } catch (error) {
-        console.log(`Error with repository ${repo}: ${error}`);
-      }
-    }
-    await octokit.issues.create({
-      owner: "jhu-oose",
-      repo: `${process.env.COURSE}-students`,
-      title: `File ${destination} added to your student repository`,
-      body: `See \`https://github.com/jhu-oose/${process.env.COURSE}-student-<your-github-identifier>/blob/master/${destination}\`.
-
-/cc @jhu-oose/${process.env.COURSE}-students
-`
-    });
+    await uploadFile(
+      source,
+      destination,
+      await getStudentsRepositories(),
+      "student"
+    );
   });
 
 program.command("students:files:check <path>").action(async path => {
-  for (const { name: repo } of await getStudentsRepositories()) {
-    try {
-      await octokit.repos.getContents({
-        owner: "jhu-oose",
-        repo,
-        path
-      });
-    } catch (error) {
-      console.log(`Error with repository ${repo}: ${error}`);
-    }
-  }
+  await checkFile(path, await getStudentsRepositories());
 });
 
 program
@@ -299,7 +256,9 @@ program
       title: `Grade individual assignment ${assignment}`
     })).data.number;
     for (const part of parts) {
-      const path = `grades/students/assignments/${assignment}/${slugify(part)}.md`;
+      const path = `grades/students/assignments/${assignment}/${slugify(
+        part
+      )}.md`;
       const template = `# Rubric
 
 # Grades
@@ -566,9 +525,7 @@ ${githubs
       title: `Grade quiz: ${part}`,
       labels: ["quiz"],
       milestone,
-      body: `[${path}](https://github.com/jhu-oose/${
-        process.env.COURSE
-      }-staff/blob/master/${path})
+      body: `[${path}](https://github.com/jhu-oose/${process.env.COURSE}-staff/blob/master/${path})
 
 /cc @jhu-oose/${process.env.COURSE}-staff
 `
@@ -781,43 +738,16 @@ program.command("groups:delete <identifier>").action(async identifier => {
 program
   .command("groups:files:upload <source> <destination>")
   .action(async (source, destination) => {
-    const template = await getFile(source);
-    for (const { name: repo } of await getGroupsRepositories()) {
-      try {
-        await octokit.repos.createOrUpdateFile({
-          owner: "jhu-oose",
-          repo,
-          path: destination,
-          message: `Add ${destination}`,
-          content: render(template)
-        });
-      } catch (error) {
-        console.log(`Error with repository ${repo}: ${error}`);
-      }
-    }
-    await octokit.issues.create({
-      owner: "jhu-oose",
-      repo: `${process.env.COURSE}-students`,
-      title: `File ${destination} added to your group repository`,
-      body: `See \`https://github.com/jhu-oose/${process.env.COURSE}-group-<your-group-identifier>/blob/master/${destination}\`.
-
-/cc @jhu-oose/${process.env.COURSE}-students
-`
-    });
+    await uploadFile(
+      source,
+      destination,
+      await getGroupsRepositories(),
+      "group"
+    );
   });
 
 program.command("groups:files:check <path>").action(async path => {
-  for (const { name: repo } of await getGroupsRepositories()) {
-    try {
-      await octokit.repos.getContents({
-        owner: "jhu-oose",
-        repo,
-        path
-      });
-    } catch (error) {
-      console.log(`Error with repository ${repo}: ${error}`);
-    }
-  }
+  await checkFile(path, await getGroupsRepositories());
 });
 
 program
@@ -999,12 +929,60 @@ async function getFile(path: string): Promise<string> {
   ).toString();
 }
 
+async function checkFile(path: string, repositories: any[]): Promise<void> {
+  for (const { name: repo } of repositories) {
+    try {
+      await octokit.repos.getContents({
+        owner: "jhu-oose",
+        repo,
+        path
+      });
+    } catch (error) {
+      console.log(`Error with repository ${repo}: ${error}`);
+    }
+  }
+}
+
 async function listDirectory(path: string): Promise<Octokit.AnyResponse> {
   return (await octokit.repos.getContents({
     owner: "jhu-oose",
     repo: `${process.env.COURSE}-staff`,
     path
   })).data;
+}
+
+async function uploadFile(
+  source: string,
+  destination: string,
+  repositories: any[],
+  repositoriesKind: "student" | "group",
+  scopeGenerator: (repository: any) => object = repository => {
+    return {};
+  }
+): Promise<void> {
+  const template = await getFile(source);
+  for (const repository of repositories) {
+    try {
+      await octokit.repos.createOrUpdateFile({
+        owner: "jhu-oose",
+        repo: repository.name,
+        path: destination,
+        message: `Add ${destination}`,
+        content: render(template, scopeGenerator(repository))
+      });
+    } catch (error) {
+      console.log(`Error with repository ${repository.name}: ${error}`);
+    }
+  }
+  await octokit.issues.create({
+    owner: "jhu-oose",
+    repo: `${process.env.COURSE}-students`,
+    title: `File ${destination} added to your ${repositoriesKind} repository`,
+    body: `See \`https://github.com/jhu-oose/${process.env.COURSE}-${repositoriesKind}-<identifier>/blob/master/${destination}\`.
+
+/cc @jhu-oose/${process.env.COURSE}-students
+`
+  });
 }
 
 function serialize(data: any): string {
