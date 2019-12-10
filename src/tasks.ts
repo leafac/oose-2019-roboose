@@ -299,6 +299,7 @@ program
       title: `Grade individual assignment ${assignment}`
     })).data.number;
     for (const part of parts) {
+      const path = `grades/students/assignments/${assignment}/${slugify(part)}.md`;
       const template = `# Rubric
 
 # Grades
@@ -322,7 +323,7 @@ ${submissions
       await octokit.repos.createOrUpdateFile({
         owner: "jhu-oose",
         repo: `${process.env.COURSE}-staff`,
-        path: `grades/assignments/${assignment}/${slugify(part)}.md`,
+        path,
         message: `Grade individual assignment ${assignment}: ${part}`,
         content: Buffer.from(template).toString("base64")
       });
@@ -332,13 +333,7 @@ ${submissions
         title: `Grade individual assignment ${assignment}: ${part}`,
         labels: ["grading"],
         milestone,
-        body: `[\`grades/assignments/${assignment}/${slugify(
-          part
-        )}.md\`](https://github.com/jhu-oose/${
-          process.env.COURSE
-        }-staff/blob/master/grades/assignments/${assignment}/${slugify(
-          part
-        )}.md)
+        body: `[${path}](https://github.com/jhu-oose/${process.env.COURSE}-staff/blob/master/${path})
 
 /cc @jhu-oose/${process.env.COURSE}-staff
 `
@@ -367,7 +362,7 @@ program
     const partsGradesMappings = new Array<Map<Github, Grade>>();
     for (const part of parts) {
       const [, rubricSection, gradesSection] = (await getFile(
-        `grades/assignments/${assignment}/${slugify(part)}.md`
+        `grades/students/assignments/${assignment}/${slugify(part)}.md`
       )).match(/^# Rubric(.*)^# Grades(.*)/ms)!;
       type RubricItemName = string;
       type RubricItemContent = string;
@@ -541,6 +536,7 @@ program.command("quiz:grades:start").action(async () => {
     title: `Grade quiz`
   })).data.number;
   for (const part of parts) {
+    const path = `grades/students/quiz/${slugify(part)}.md`;
     const template = `# Rubric
 
 # Grades
@@ -560,7 +556,7 @@ ${githubs
     await octokit.repos.createOrUpdateFile({
       owner: "jhu-oose",
       repo: `${process.env.COURSE}-staff`,
-      path: `grades/quiz/${slugify(part)}.md`,
+      path,
       message: `Grade quiz: ${part}`,
       content: Buffer.from(template).toString("base64")
     });
@@ -570,11 +566,9 @@ ${githubs
       title: `Grade quiz: ${part}`,
       labels: ["quiz"],
       milestone,
-      body: `[\`grades/quiz/${slugify(
-        part
-      )}.md\`](https://github.com/jhu-oose/${
+      body: `[${path}](https://github.com/jhu-oose/${
         process.env.COURSE
-      }-staff/blob/master/grades/quiz/${slugify(part)}.md)
+      }-staff/blob/master/${path})
 
 /cc @jhu-oose/${process.env.COURSE}-staff
 `
@@ -599,7 +593,7 @@ program.command("quiz:grades:publish").action(async () => {
   const partsGradesMappings = new Array<Map<Github, Grade>>();
   for (const part of parts) {
     const [, rubricSection, gradesSection] = (await getFile(
-      `grades/quiz/${slugify(part)}.md`
+      `grades/students/quiz/${slugify(part)}.md`
     )).match(/^# Rubric(.*)^# Grades(.*)/ms)!;
     type RubricItemName = string;
     type RubricItemContent = string;
@@ -885,11 +879,12 @@ program
       title: `Review group project iteration ${iteration}`
     })).data.number;
     for (const { iteration, github, commit } of submissions) {
+      const path = `grades/groups/iterations/${iteration}/${github}.md`;
       const advisor = configuration.advisors[github];
       await octokit.repos.createOrUpdateFile({
         owner: "jhu-oose",
         repo: `${process.env.COURSE}-staff`,
-        path: `grades/iterations/${iteration}/${github}.md`,
+        path,
         message: `Review group project iteration ${iteration}: ${github}`,
         content: render(template, { github, commit, advisor })
       });
@@ -900,7 +895,7 @@ program
         labels: ["reviewing"],
         milestone,
         assignees: [advisor],
-        body: `[\`grades/iterations/${iteration}/${github}.md\`](https://github.com/jhu-oose/${process.env.COURSE}-staff/blob/master/grades/iterations/${iteration}/${github}.md)
+        body: `[${path}](https://github.com/jhu-oose/${process.env.COURSE}-staff/blob/master/${path})
 
 /cc @${advisor}
 `
@@ -912,7 +907,7 @@ program
   .command("iterations:reviews:publish <iteration>")
   .action(async iteration => {
     for (const { name, path } of await listDirectory(
-      `grades/iterations/${iteration}/`
+      `grades/groups/iterations/${iteration}/`
     )) {
       const github = name.slice(0, name.length - ".md".length);
       await octokit.issues.create({
