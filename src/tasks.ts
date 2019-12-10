@@ -196,7 +196,7 @@ program
     await octokit.issues.create({
       owner: "jhu-oose",
       repo: `${process.env.COURSE}-students`,
-      title: `File ${destination} added to your personal repository`,
+      title: `File ${destination} added to your student repository`,
       body: `See \`https://github.com/jhu-oose/${process.env.COURSE}-student-<your-github-identifier>/blob/master/${destination}\`.
 
 /cc @jhu-oose/${process.env.COURSE}-students
