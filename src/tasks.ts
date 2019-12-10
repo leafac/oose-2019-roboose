@@ -176,6 +176,17 @@ program.command("students:files:check <path>").action(async path => {
 });
 
 program
+  .command("assignments:templates:add <assignment>")
+  .action(async assignment => {
+    await uploadFile(
+      `templates/students/assignments/${assignment}.md`,
+      `assignments/${assignment}.md`,
+      await getStudentsRepositories(),
+      "student"
+    );
+  });
+
+program
   .command("assignments:submissions:add <assignment> <github> <commit> <time>")
   .action(async (assignment, github, commit, time) => {
     await octokit.repos.getContents({
