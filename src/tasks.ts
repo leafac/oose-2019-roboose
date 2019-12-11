@@ -113,9 +113,7 @@ program.command("students:check").action(async () => {
     })
   )).map(deserializeResponse);
   for (const { github, hopkins } of students) {
-    await checkFile("assignments/0.md", [
-      { name: `${process.env.COURSE}-student-${github}` }
-    ]);
+    await checkFile("assignments/0.md", "student", [github]);
     if (!configuration.hopkinses.includes(hopkins)) {
       try {
         await octokit.repos.get({
@@ -131,8 +129,10 @@ program.command("students:check").action(async () => {
 });
 
 program.command("students:profiles").action(async () => {
-  for (const { name: repo } of await getStudentsRepositories()) {
-    await open(`https://github.com/jhu-oose/${repo}`);
+  for (const github of await getStudents()) {
+    await open(
+      `https://github.com/jhu-oose/${process.env.COURSE}-student-${github}`
+    );
     await inquirer.prompt([
       { name: "Press ENTER to open next student’s profile" }
     ]);
@@ -163,16 +163,11 @@ program.command("students:delete <github>").action(async github => {
 program
   .command("students:files:upload <source> <destination>")
   .action(async (source, destination) => {
-    await uploadFile(
-      source,
-      destination,
-      await getStudentsRepositories(),
-      "student"
-    );
+    await uploadFile(source, destination, "student", await getStudents());
   });
 
 program.command("students:files:check <path>").action(async path => {
-  await checkFile(path, await getStudentsRepositories());
+  await checkFile(path, "student", await getStudents());
 });
 
 program
@@ -181,8 +176,8 @@ program
     await uploadFile(
       `templates/students/assignments/${assignment}.md`,
       `assignments/${assignment}.md`,
-      await getStudentsRepositories(),
-      "student"
+      "student",
+      await getStudents()
     );
   });
 
@@ -482,7 +477,7 @@ program
             .toString("base64")
         });
       } catch (error) {
-        console.log(`Error with repository ${repo}: ${error}`);
+        console.log(`Error with ${github}: ${error}`);
       }
     }
   });
@@ -749,16 +744,11 @@ program.command("groups:delete <identifier>").action(async identifier => {
 program
   .command("groups:files:upload <source> <destination>")
   .action(async (source, destination) => {
-    await uploadFile(
-      source,
-      destination,
-      await getGroupsRepositories(),
-      "group"
-    );
+    await uploadFile(source, destination, "group", await getGroups());
   });
 
 program.command("groups:files:check <path>").action(async path => {
-  await checkFile(path, await getGroupsRepositories());
+  await checkFile(path, "group", await getGroups());
 });
 
 program
@@ -767,8 +757,7 @@ program
     "run this when iteration is due to put group projects in database"
   )
   .action(async iteration => {
-    for (const { name } of await getGroupsRepositories()) {
-      const github = name.slice(`${process.env.COURSE}-group-`.length);
+    for (const github of await getGroups()) {
       const commit = (await octokit.repos.getCommit({
         owner: "jhu-oose",
         repo: `${process.env.COURSE}-group-${github}`,
@@ -913,20 +902,25 @@ async function getConfiguration(): Promise<any> {
   return JSON.parse(await getFile("configuration.json"));
 }
 
-async function getStudentsRepositories(): Promise<any[]> {
-  return await octokit.paginate(
-    octokit.search.repos.endpoint.merge({
-      q: `jhu-oose/${process.env.COURSE}-student-`
+async function getStudents(): Promise<string[]> {
+  return (await octokit.paginate(
+    octokit.teams.listMembers.endpoint.merge({
+      team_id: (await octokit.teams.getByName({
+        org: "jhu-oose",
+        team_slug: `${process.env.COURSE}-students`
+      })).data.id
     })
-  );
+  )).map(member => member.login);
 }
 
-async function getGroupsRepositories(): Promise<any[]> {
-  return await octokit.paginate(
-    octokit.search.repos.endpoint.merge({
-      q: `jhu-oose/${process.env.COURSE}-group-`
+async function getGroups(): Promise<string[]> {
+  return (await octokit.paginate(
+    octokit.teams.list.endpoint.merge({
+      org: "jhu-oose"
     })
-  );
+  ))
+    .filter(team => team.slug.startsWith(`${process.env.COURSE}-group-`))
+    .map(team => team.slug);
 }
 
 async function getFile(path: string): Promise<string> {
@@ -940,20 +934,6 @@ async function getFile(path: string): Promise<string> {
   ).toString();
 }
 
-async function checkFile(path: string, repositories: any[]): Promise<void> {
-  for (const { name: repo } of repositories) {
-    try {
-      await octokit.repos.getContents({
-        owner: "jhu-oose",
-        repo,
-        path
-      });
-    } catch (error) {
-      console.log(`Error with repository ${repo}: ${error}`);
-    }
-  }
-}
-
 async function listDirectory(path: string): Promise<Octokit.AnyResponse> {
   return (await octokit.repos.getContents({
     owner: "jhu-oose",
@@ -962,38 +942,58 @@ async function listDirectory(path: string): Promise<Octokit.AnyResponse> {
   })).data;
 }
 
+type Kind = "student" | "group";
+
 async function uploadFile(
   source: string,
   destination: string,
-  repositories: any[],
-  repositoriesKind: "student" | "group",
-  scopeGenerator: (repository: any) => object = repository => {
+  kind: Kind,
+  githubs: string[],
+  scopeGenerator: (github: string) => object = github => {
     return {};
   }
 ): Promise<void> {
   const template = await getFile(source);
-  for (const repository of repositories) {
+  for (const github of githubs) {
     try {
       await octokit.repos.createOrUpdateFile({
         owner: "jhu-oose",
-        repo: repository.name,
+        repo: `${process.env.COURSE}-${kind}-${github}`,
         path: destination,
         message: `Add ${destination}`,
-        content: render(template, scopeGenerator(repository))
+        content: render(template, scopeGenerator(github))
       });
     } catch (error) {
-      console.log(`Error with repository ${repository.name}: ${error}`);
+      console.log(`Error with ${github}: ${error}`);
     }
   }
   await octokit.issues.create({
     owner: "jhu-oose",
     repo: `${process.env.COURSE}-students`,
-    title: `File ${destination} added to your ${repositoriesKind} repository`,
-    body: `See \`https://github.com/jhu-oose/${process.env.COURSE}-${repositoriesKind}-<identifier>/blob/master/${destination}\`.
+    title: `File ${destination} added to your ${kind} repository`,
+    body: `See \`https://github.com/jhu-oose/${process.env.COURSE}-${kind}-<identifier>/blob/master/${destination}\`.
 
 /cc @jhu-oose/${process.env.COURSE}-students
 `
   });
+}
+
+async function checkFile(
+  path: string,
+  kind: Kind,
+  githubs: string[]
+): Promise<void> {
+  for (const github of githubs) {
+    try {
+      await octokit.repos.getContents({
+        owner: "jhu-oose",
+        repo: `${process.env.COURSE}-${kind}-${github}`,
+        path
+      });
+    } catch (error) {
+      console.log(`Error with ${github}: ${error}`);
+    }
+  }
 }
 
 function serialize(data: any): string {
