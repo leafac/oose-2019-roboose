@@ -250,7 +250,7 @@ program
             Date.parse(submission.time) < Date.parse(otherSubmission.time)
         )
     );
-    const parts = (await getFile(
+    const parts = (await getStaffFile(
       `templates/students/assignments/${assignment}.md`
     ))
       .match(/^# .*/gm)!
@@ -317,7 +317,7 @@ program
         })).data.id
       })
     )).map(member => member.login);
-    const [title, ...parts] = (await getFile(
+    const [title, ...parts] = (await getStaffFile(
       `templates/students/assignments/${assignment}.md`
     ))
       .match(/^# .*/gm)!
@@ -326,7 +326,7 @@ program
     type Grade = string;
     const partsGradesMappings = new Array<Map<Github, Grade>>();
     for (const part of parts) {
-      const [, rubricSection, gradesSection] = (await getFile(
+      const [, rubricSection, gradesSection] = (await getStaffFile(
         `grades/students/assignments/${assignment}/${slugify(part)}.md`
       )).match(/^# Rubric(.*)^# Grades(.*)/ms)!;
       type RubricItemName = string;
@@ -491,7 +491,7 @@ program.command("quiz:grades:start").action(async () => {
       })).data.id
     })
   )).map(s => s.login);
-  const parts = (await getFile("templates/students/quiz.md"))
+  const parts = (await getStaffFile("templates/students/quiz.md"))
     .match(/^# .*/gm)!
     .slice(1)
     .map(heading => heading.slice("# ".length));
@@ -548,14 +548,14 @@ program.command("quiz:grades:publish").action(async () => {
       })).data.id
     })
   )).map(member => member.login);
-  const [title, ...parts] = (await getFile("templates/students/quiz.md"))
+  const [title, ...parts] = (await getStaffFile("templates/students/quiz.md"))
     .match(/^# .*/gm)!
     .map(heading => heading.slice("# ".length));
   type Github = string;
   type Grade = string;
   const partsGradesMappings = new Array<Map<Github, Grade>>();
   for (const part of parts) {
-    const [, rubricSection, gradesSection] = (await getFile(
+    const [, rubricSection, gradesSection] = (await getStaffFile(
       `grades/students/quiz/${slugify(part)}.md`
     )).match(/^# Rubric(.*)^# Grades(.*)/ms)!;
     type RubricItemName = string;
@@ -800,7 +800,7 @@ program
     ))
       .map(deserializeResponse)
       .filter(submission => submission.iteration === iteration);
-    const template = await getFile(
+    const template = await getStaffFile(
       `templates/groups/iterations/${iteration}.md`
     );
     const milestone = (await octokit.issues.createMilestone({
@@ -836,15 +836,17 @@ program
 program
   .command("iterations:reviews:publish <iteration>")
   .action(async iteration => {
-    for (const { name, path } of await listDirectory(
+    for (const node of await listStaffDirectory(
       `grades/groups/iterations/${iteration}/`
     )) {
-      const github = name.slice(0, name.length - ".md".length);
+      const github = node.slice(0, node.length - ".md".length);
       await octokit.issues.create({
         owner: "jhu-oose",
         repo: `${process.env.COURSE}-group-${github}`,
         title: `Review of iteration ${iteration}`,
-        body: `${await getFile(path)}
+        body: `${await getStaffFile(
+          `grades/groups/iterations/${iteration}/${node}`
+        )}
 
 ---
 
@@ -899,7 +901,7 @@ const octokit = new (Octokit.plugin([pluginThrottling, pluginRetry]))({
 });
 
 async function getConfiguration(): Promise<any> {
-  return JSON.parse(await getFile("configuration.json"));
+  return JSON.parse(await getStaffFile("configuration.json"));
 }
 
 async function getStudents(): Promise<string[]> {
@@ -923,7 +925,7 @@ async function getGroups(): Promise<string[]> {
     .map(team => team.slug);
 }
 
-async function getFile(path: string): Promise<string> {
+async function getStaffFile(path: string): Promise<string> {
   return Buffer.from(
     (await octokit.repos.getContents({
       owner: "jhu-oose",
@@ -934,12 +936,12 @@ async function getFile(path: string): Promise<string> {
   ).toString();
 }
 
-async function listDirectory(path: string): Promise<Octokit.AnyResponse> {
+async function listStaffDirectory(path: string): Promise<string[]> {
   return (await octokit.repos.getContents({
     owner: "jhu-oose",
     repo: `${process.env.COURSE}-staff`,
     path
-  })).data;
+  })).data.map((node: any) => node.name);
 }
 
 type Kind = "student" | "group";
@@ -953,7 +955,7 @@ async function uploadFile(
     return {};
   }
 ): Promise<void> {
-  const template = await getFile(source);
+  const template = await getStaffFile(source);
   for (const github of githubs) {
     try {
       await octokit.repos.createOrUpdateFile({
