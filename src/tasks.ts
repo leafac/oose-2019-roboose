@@ -91,7 +91,7 @@ program
         owner: "jhu-oose",
         repo: `${process.env.COURSE}-staff`,
         title,
-        labels: ["data"]
+        labels: ["database"]
       })).data.number;
       await octokit.issues.update({
         owner: "jhu-oose",
@@ -104,14 +104,14 @@ program
 
 program.command("students:check").action(async () => {
   const configuration = await getConfiguration();
-  const students = (await octokit.paginate(
+  const registrations = (await octokit.paginate(
     octokit.issues.listComments.endpoint.merge({
       owner: "jhu-oose",
       repo: `${process.env.COURSE}-staff`,
       issue_number: Number(process.env.ISSUE_STUDENTS)
     })
   )).map(deserializeResponse);
-  for (const { github, hopkins } of students) {
+  for (const { github, hopkins } of registrations) {
     await checkFile("assignments/0.md", "student", [github]);
     if (!configuration.hopkinses.includes(hopkins)) {
       try {
@@ -265,20 +265,18 @@ program
       title: `Grade individual assignment ${assignment}`
     })).data.number;
     for (const part of parts) {
-      const path = `grades/students/assignments/${assignment}/${slugify(
-        part
-      )}.md`;
+      const slug = slugify(part);
+      const path = `grades/students/assignments/${assignment}/${slug}.md`;
       const template = `# Rubric
 
 # Grades
 
 ${submissions
   .map(
-    ({ github, commit }) => `## [${github}](https://github.com/jhu-oose/${
-      process.env.COURSE
-    }-student-${github}/blob/${commit}/assignments/${assignment}.md#${slugify(
-      part
-    )})
+    ({
+      github,
+      commit
+    }) => `## [${github}](https://github.com/jhu-oose/${process.env.COURSE}-student-${github}/blob/${commit}/assignments/${assignment}.md#${slug})
 
 
 
@@ -293,13 +291,13 @@ ${submissions
         repo: `${process.env.COURSE}-staff`,
         path,
         message: `Grade individual assignment ${assignment}: ${part}`,
-        content: Buffer.from(template).toString("base64")
+        content: render(template)
       });
       await octokit.issues.create({
         owner: "jhu-oose",
         repo: `${process.env.COURSE}-staff`,
         title: `Grade individual assignment ${assignment}: ${part}`,
-        labels: ["grading"],
+        labels: ["assignment"],
         milestone,
         body: `[${path}](https://github.com/jhu-oose/${process.env.COURSE}-staff/blob/master/${path})
 
@@ -474,7 +472,7 @@ program
           owner: "jhu-oose",
           repo,
           path: `quiz.pdf`,
-          message: `Add quiz`,
+          message: `Add quiz.pdf`,
           content: fs
             .readFileSync(`${pathToScannedPdfs}/${pdf}`)
             .toString("base64")
@@ -504,7 +502,8 @@ program.command("quiz:grades:start").action(async () => {
     title: `Grade quiz`
   })).data.number;
   for (const part of parts) {
-    const path = `grades/students/quiz/${slugify(part)}.md`;
+    const slug = slugify(part);
+    const path = `grades/students/quiz/${slug}.md`;
     const template = `# Rubric
 
 # Grades
@@ -526,7 +525,7 @@ ${githubs
       repo: `${process.env.COURSE}-staff`,
       path,
       message: `Grade quiz: ${part}`,
-      content: Buffer.from(template).toString("base64")
+      content: render(template)
     });
     await octokit.issues.create({
       owner: "jhu-oose",
@@ -815,7 +814,7 @@ program
       repo: `${process.env.COURSE}-staff`,
       title: `Review group project iteration ${iteration}`
     })).data.number;
-    for (const { iteration, github, commit } of submissions) {
+    for (const { github, commit } of submissions) {
       const path = `grades/groups/iterations/${iteration}/${github}.md`;
       const advisor = configuration.advisors[github];
       await octokit.repos.createOrUpdateFile({
@@ -829,7 +828,7 @@ program
         owner: "jhu-oose",
         repo: `${process.env.COURSE}-staff`,
         title: `Review group project iteration ${iteration}: ${github}`,
-        labels: ["reviewing"],
+        labels: ["iteration"],
         milestone,
         assignees: [advisor],
         body: `[${path}](https://github.com/jhu-oose/${process.env.COURSE}-staff/blob/master/${path})
@@ -1029,6 +1028,15 @@ async function deleteFile(
   }
 }
 
+function render(template: string, scope: object = {}): string {
+  return Buffer.from(
+    new Function(
+      ...Object.keys(scope),
+      `return \`${template.replace(/`/g, "\\`")}\`;`
+    )(...Object.values(scope))
+  ).toString("base64");
+}
+
 function serialize(data: any): string {
   return `\`\`\`json
 ${JSON.stringify(data, undefined, 2)}
@@ -1050,16 +1058,10 @@ function deserializeResponse(response: { body: string }): any {
 }
 
 function slugify(string: string): string {
-  return string.toLowerCase().replace(/ /g, "-").replace(/[^a-z\-]/g, "");
-}
-
-function render(template: string, scope: object = {}): string {
-  return Buffer.from(
-    new Function(
-      ...Object.keys(scope),
-      `return \`${template.replace(/`/g, "\\`")}\`;`
-    )(...Object.values(scope))
-  ).toString("base64");
+  return string
+    .toLowerCase()
+    .replace(/ /g, "-")
+    .replace(/[^a-z\-]/g, "");
 }
 
 program.command("*").action(() => {
