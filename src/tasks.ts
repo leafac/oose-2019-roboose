@@ -262,7 +262,7 @@ program
     const milestone = (await octokit.issues.createMilestone({
       owner: "jhu-oose",
       repo: `${process.env.COURSE}-staff`,
-      title: `Grade individual assignment ${assignment}`
+      title: `Grade Assignment ${assignment}`
     })).data.number;
     for (const part of parts) {
       const slug = slugify(part);
@@ -290,13 +290,13 @@ ${submissions
         owner: "jhu-oose",
         repo: `${process.env.COURSE}-staff`,
         path,
-        message: `Grade individual assignment ${assignment}: ${part}`,
+        message: `Add ${path}`,
         content: render(template)
       });
       await octokit.issues.create({
         owner: "jhu-oose",
         repo: `${process.env.COURSE}-staff`,
-        title: `Grade individual assignment ${assignment}: ${part}`,
+        title: `Grade Assignment ${assignment}: ${part}`,
         labels: ["assignment"],
         milestone,
         body: `[${path}](https://github.com/jhu-oose/${process.env.COURSE}-staff/blob/master/${path})
@@ -452,7 +452,7 @@ To request a regrade, comment on this issue within one week. Mention the grader 
         })
       )).find(
         milestone =>
-          milestone.title === `Grade individual assignment ${assignment}`
+          milestone.title === `Grade Assignment ${assignment}`
       ).number,
       state: "closed"
     });
@@ -471,8 +471,8 @@ program
         await octokit.repos.createOrUpdateFile({
           owner: "jhu-oose",
           repo,
-          path: `quiz.pdf`,
-          message: `Add quiz.pdf`,
+          path: "quiz.pdf",
+          message: "Add quiz.pdf",
           content: fs
             .readFileSync(`${pathToScannedPdfs}/${pdf}`)
             .toString("base64")
@@ -524,7 +524,7 @@ ${githubs
       owner: "jhu-oose",
       repo: `${process.env.COURSE}-staff`,
       path,
-      message: `Grade quiz: ${part}`,
+      message: `Add ${path}`,
       content: render(template)
     });
     await octokit.issues.create({
@@ -794,7 +794,7 @@ program
   });
 
 program
-  .command("iterations:reviews:start <iteration>")
+  .command("iterations:grades:start <iteration>")
   .action(async iteration => {
     const configuration = await getConfiguration();
     const submissions = (await octokit.paginate(
@@ -812,7 +812,7 @@ program
     const milestone = (await octokit.issues.createMilestone({
       owner: "jhu-oose",
       repo: `${process.env.COURSE}-staff`,
-      title: `Review group project iteration ${iteration}`
+      title: `Grade Iteration ${iteration}`
     })).data.number;
     for (const { github, commit } of submissions) {
       const path = `grades/groups/iterations/${iteration}/${github}.md`;
@@ -821,13 +821,13 @@ program
         owner: "jhu-oose",
         repo: `${process.env.COURSE}-staff`,
         path,
-        message: `Review group project iteration ${iteration}: ${github}`,
+        message: `Add ${path}`,
         content: render(template, { github, commit, advisor })
       });
       await octokit.issues.create({
         owner: "jhu-oose",
         repo: `${process.env.COURSE}-staff`,
-        title: `Review group project iteration ${iteration}: ${github}`,
+        title: `Grade Iteration ${iteration}: ${github}`,
         labels: ["iteration"],
         milestone,
         assignees: [advisor],
@@ -840,7 +840,7 @@ program
   });
 
 program
-  .command("iterations:reviews:publish <iteration>")
+  .command("iterations:grades:publish <iteration>")
   .action(async iteration => {
     for (const node of await listStaffDirectory(
       `grades/groups/iterations/${iteration}/`
@@ -849,18 +849,18 @@ program
       await octokit.issues.create({
         owner: "jhu-oose",
         repo: `${process.env.COURSE}-group-${github}`,
-        title: `Review of iteration ${iteration}`,
+        title: `Grade for Iteration ${iteration}`,
         body: `${await getStaffFile(
           `grades/groups/iterations/${iteration}/${node}`
         )}
 
 ---
 
-To accept the review, close this issue.
+To accept, close this issue.
 
-To request a change, comment on this issue within one week. Mention the reviewer, for example, if your reviewer is \`jhu-oose-example-ca\`, mention with \`@jhu-oose-example-ca\`.
+To request a change, comment on this issue within one week. Mention the advisor, for example, if your advisor is \`jhu-oose-example-ca\`, mention with \`@jhu-oose-example-ca\`.
 
-You may get some points back for things that you fix, and you have to discuss this with your reviewer.
+You may get some points back for things that you fix, and you have to discuss this with your advisor.
 
 /cc @jhu-oose/${process.env.COURSE}-group-${github.toLowerCase()}
 `
@@ -876,7 +876,7 @@ You may get some points back for things that you fix, and you have to discuss th
         })
       )).find(
         milestone =>
-          milestone.title === `Review group project iteration ${iteration}`
+          milestone.title === `Grade Iteration ${iteration}`
       ).number,
       state: "closed"
     });

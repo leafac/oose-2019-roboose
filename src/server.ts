@@ -56,7 +56,7 @@ export = (app: Application) => {
         owner: "jhu-oose",
         repo: `${process.env.COURSE}-student-${github}`,
         path: "README.md",
-        message: "Add README.md template",
+        message: "Add README.md",
         content: (await octokit.repos.getContents({
           owner: "jhu-oose",
           repo: `${process.env.COURSE}-staff`,
@@ -67,7 +67,7 @@ export = (app: Application) => {
         owner: "jhu-oose",
         repo: `${process.env.COURSE}-student-${github}`,
         path: "assignments/0.md",
-        message: "Add Assignment 0 template",
+        message: "Add assignments/0.md",
         content: (await octokit.repos.getContents({
           owner: "jhu-oose",
           repo: `${process.env.COURSE}-staff`,
@@ -210,7 +210,7 @@ export = (app: Application) => {
         owner: "jhu-oose",
         repo: `${process.env.COURSE}-group-${identifier}`,
         path: "docs/project-proposal.md",
-        message: "Add project proposal template",
+        message: "Add docs/project-proposal.md",
         content: (await octokit.repos.getContents({
           owner: "jhu-oose",
           repo: `${process.env.COURSE}-staff`,
