@@ -6,7 +6,6 @@ import { Command } from "commander";
 import dotenv from "dotenv";
 import inquirer from "inquirer";
 import open from "open";
-import slugifyOriginal from "slugify";
 import fs from "fs";
 
 const program = new Command();
@@ -1051,7 +1050,7 @@ function deserializeResponse(response: { body: string }): any {
 }
 
 function slugify(string: string): string {
-  return slugifyOriginal(string, { lower: true });
+  return string.toLowerCase().replace(/ /g, "-").replace(/[^a-z\-]/g, "");
 }
 
 function render(template: string, scope: object = {}): string {
