@@ -170,6 +170,10 @@ program.command("students:files:check <path>").action(async path => {
   await checkFile(path, "student", await getStudents());
 });
 
+program.command("students:files:delete <path>").action(async path => {
+  await deleteFile(path, "student", await getStudents());
+});
+
 program
   .command("assignments:templates:add <assignment>")
   .action(async assignment => {
@@ -751,6 +755,10 @@ program.command("groups:files:check <path>").action(async path => {
   await checkFile(path, "group", await getGroups());
 });
 
+program.command("groups:files:delete <path>").action(async path => {
+  await deleteFile(path, "group", await getGroups());
+});
+
 program
   .command("iterations:collect <iteration>")
   .description(
@@ -991,6 +999,30 @@ async function checkFile(
         owner: "jhu-oose",
         repo: `${process.env.COURSE}-${kind}-${github}`,
         path
+      });
+    } catch (error) {
+      console.log(`Error with ${github}: ${error}`);
+    }
+  }
+}
+
+async function deleteFile(
+  path: string,
+  kind: Kind,
+  githubs: string[]
+): Promise<void> {
+  for (const github of githubs) {
+    try {
+      await octokit.repos.deleteFile({
+        owner: "jhu-oose",
+        repo: `${process.env.COURSE}-${kind}-${github}`,
+        path,
+        message: `Delete ${path}`,
+        sha: (await octokit.repos.getContents({
+          owner: "jhu-oose",
+          repo: `${process.env.COURSE}-${kind}-${github}`,
+          path
+        })).data.sha
       });
     } catch (error) {
       console.log(`Error with ${github}: ${error}`);
