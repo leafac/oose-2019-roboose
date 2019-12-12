@@ -236,13 +236,9 @@ program
 program
   .command("assignments:grades:start <assignment>")
   .action(async assignment => {
-    const allSubmissions = (await octokit.paginate(
-      octokit.issues.listComments.endpoint.merge({
-        owner: "jhu-oose",
-        repo: `${process.env.COURSE}-staff`,
-        issue_number: Number(process.env.ISSUE_ASSIGNMENTS)
-      })
-    )).map(deserializeResponse);
+    const allSubmissions = await getTable(
+      Number(process.env.ISSUE_ASSIGNMENTS)
+    );
     const submissions = allSubmissions.filter(
       submission =>
         submission.assignment === assignment &&
@@ -253,58 +249,14 @@ program
             Date.parse(submission.time) < Date.parse(otherSubmission.time)
         )
     );
-    const parts = (await getStaffFile(
-      `templates/students/assignments/${assignment}.md`
-    ))
-      .match(/^# .*/gm)!
-      .slice(1)
-      .map(heading => heading.slice("# ".length));
-    const milestone = (await octokit.issues.createMilestone({
-      owner: "jhu-oose",
-      repo: `${process.env.COURSE}-staff`,
-      title: `Grade Assignment ${assignment}`
-    })).data.number;
-    for (const part of parts) {
-      const slug = slugify(part);
-      const path = `grades/students/assignments/${assignment}/${slug}.md`;
-      const template = `# Rubric
-
-# Grades
-
-${submissions
-  .map(
-    ({
-      github,
-      commit
-    }) => `## [${github}](https://github.com/jhu-oose/${process.env.COURSE}-student-${github}/blob/${commit}/assignments/${assignment}.md#${slug})
-
-
-
-**Grader:** 
-
-`
-  )
-  .join("")}
-`;
-      await octokit.repos.createOrUpdateFile({
-        owner: "jhu-oose",
-        repo: `${process.env.COURSE}-staff`,
-        path,
-        message: `Add ${path}`,
-        content: render(template)
-      });
-      await octokit.issues.create({
-        owner: "jhu-oose",
-        repo: `${process.env.COURSE}-staff`,
-        title: `Grade Assignment ${assignment}: ${part}`,
-        labels: ["assignment"],
-        milestone,
-        body: `[${path}](https://github.com/jhu-oose/${process.env.COURSE}-staff/blob/master/${path})
-
-/cc @jhu-oose/${process.env.COURSE}-staff
-`
-      });
-    }
+    await startStudentsGrade(
+      `Assignment ${assignment}`,
+      "assignment",
+      submissions,
+      `assignments/${assignment}.md`,
+      `templates/students/assignments/${assignment}.md`,
+      `grades/students/assignments/${assignment}`
+    );
   });
 
 program
@@ -450,10 +402,8 @@ To request a regrade, comment on this issue within one week. Mention the grader 
           owner: "jhu-oose",
           repo: `${process.env.COURSE}-staff`
         })
-      )).find(
-        milestone =>
-          milestone.title === `Grade Assignment ${assignment}`
-      ).number,
+      )).find(milestone => milestone.title === `Grade Assignment ${assignment}`)
+        .number,
       state: "closed"
     });
   });
@@ -874,10 +824,8 @@ You may get some points back for things that you fix, and you have to discuss th
           owner: "jhu-oose",
           repo: `${process.env.COURSE}-staff`
         })
-      )).find(
-        milestone =>
-          milestone.title === `Grade Iteration ${iteration}`
-      ).number,
+      )).find(milestone => milestone.title === `Grade Iteration ${iteration}`)
+        .number,
       state: "closed"
     });
   });
@@ -950,12 +898,22 @@ async function listStaffDirectory(path: string): Promise<string[]> {
   })).data.map((node: any) => node.name);
 }
 
-type Kind = "student" | "group";
+async function getTable(issueNumber: number): Promise<any[]> {
+  return (await octokit.paginate(
+    octokit.issues.listComments.endpoint.merge({
+      owner: "jhu-oose",
+      repo: `${process.env.COURSE}-staff`,
+      issue_number: issueNumber
+    })
+  )).map(deserializeResponse);
+}
+
+type RepositoryKind = "student" | "group";
 
 async function uploadFile(
   source: string,
   destination: string,
-  kind: Kind,
+  repositoryKind: RepositoryKind,
   githubs: string[],
   scopeGenerator: (github: string) => object = github => {
     return {};
@@ -966,7 +924,7 @@ async function uploadFile(
     try {
       await octokit.repos.createOrUpdateFile({
         owner: "jhu-oose",
-        repo: `${process.env.COURSE}-${kind}-${github}`,
+        repo: `${process.env.COURSE}-${repositoryKind}-${github}`,
         path: destination,
         message: `Add ${destination}`,
         content: render(template, scopeGenerator(github))
@@ -978,8 +936,8 @@ async function uploadFile(
   await octokit.issues.create({
     owner: "jhu-oose",
     repo: `${process.env.COURSE}-students`,
-    title: `File ${destination} added to your ${kind} repository`,
-    body: `See \`https://github.com/jhu-oose/${process.env.COURSE}-${kind}-<identifier>/blob/master/${destination}\`.
+    title: `File ${destination} added to your ${repositoryKind} repository`,
+    body: `See \`https://github.com/jhu-oose/${process.env.COURSE}-${repositoryKind}-<identifier>/blob/master/${destination}\`.
 
 /cc @jhu-oose/${process.env.COURSE}-students
 `
@@ -988,14 +946,14 @@ async function uploadFile(
 
 async function checkFile(
   path: string,
-  kind: Kind,
+  repositoryKind: RepositoryKind,
   githubs: string[]
 ): Promise<void> {
   for (const github of githubs) {
     try {
       await octokit.repos.getContents({
         owner: "jhu-oose",
-        repo: `${process.env.COURSE}-${kind}-${github}`,
+        repo: `${process.env.COURSE}-${repositoryKind}-${github}`,
         path
       });
     } catch (error) {
@@ -1006,25 +964,89 @@ async function checkFile(
 
 async function deleteFile(
   path: string,
-  kind: Kind,
+  repositoryKind: RepositoryKind,
   githubs: string[]
 ): Promise<void> {
   for (const github of githubs) {
     try {
       await octokit.repos.deleteFile({
         owner: "jhu-oose",
-        repo: `${process.env.COURSE}-${kind}-${github}`,
+        repo: `${process.env.COURSE}-${repositoryKind}-${github}`,
         path,
         message: `Delete ${path}`,
         sha: (await octokit.repos.getContents({
           owner: "jhu-oose",
-          repo: `${process.env.COURSE}-${kind}-${github}`,
+          repo: `${process.env.COURSE}-${repositoryKind}-${github}`,
           path
         })).data.sha
       });
     } catch (error) {
       console.log(`Error with ${github}: ${error}`);
     }
+  }
+}
+
+async function startStudentsGrade(
+  subject: string,
+  label: string,
+  submissions: { github: string; commit: string }[],
+  submissionsPath: string,
+  template: string,
+  gradesPath: string
+): Promise<void> {
+  const parts = (await getStaffFile(template))
+    .match(/^# .*/gm)!
+    .slice(1)
+    .map(heading => heading.slice("# ".length));
+  const milestone = (await octokit.issues.createMilestone({
+    owner: "jhu-oose",
+    repo: `${process.env.COURSE}-staff`,
+    title: `Grade ${subject}`
+  })).data.number;
+  for (const part of parts) {
+    const slug = slugify(part);
+    const path = `${gradesPath}/${slug}.md`;
+    const template = `# Rubric
+
+## <!-- Identifier of reusable rubric item -->
+
+**-0** <!-- Description of reusable rubric item -->
+
+# Grades
+
+${submissions
+  .map(
+    ({
+      github,
+      commit
+    }) => `## [\`${github}\`](https://github.com/jhu-oose/${process.env.COURSE}-student-${github}/blob/${commit}/${submissionsPath}#${slug})
+
+
+
+**Grader:** \`<!-- GitHub Identifier -->\`
+
+`
+  )
+  .join("")}
+`;
+    await octokit.repos.createOrUpdateFile({
+      owner: "jhu-oose",
+      repo: `${process.env.COURSE}-staff`,
+      path,
+      message: `Add ${path}`,
+      content: render(template)
+    });
+    await octokit.issues.create({
+      owner: "jhu-oose",
+      repo: `${process.env.COURSE}-staff`,
+      title: `Grade ${subject}: ${part}`,
+      labels: [label],
+      milestone,
+      body: `[\`${path}\`](https://github.com/jhu-oose/${process.env.COURSE}-staff/blob/master/${path})
+
+/cc @jhu-oose/${process.env.COURSE}-staff
+`
+    });
   }
 }
 
