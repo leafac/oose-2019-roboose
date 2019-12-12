@@ -104,13 +104,7 @@ program
 
 program.command("students:check").action(async () => {
   const configuration = await getConfiguration();
-  const registrations = (await octokit.paginate(
-    octokit.issues.listComments.endpoint.merge({
-      owner: "jhu-oose",
-      repo: `${process.env.COURSE}-staff`,
-      issue_number: Number(process.env.ISSUE_STUDENTS)
-    })
-  )).map(deserializeResponse);
+  const registrations = await getTable(Number(process.env.ISSUE_STUDENTS));
   for (const { github, hopkins } of registrations) {
     await checkFile("assignments/0.md", "student", [github]);
     if (!configuration.hopkinses.includes(hopkins)) {
@@ -219,15 +213,9 @@ program
 program
   .command("assignments:submissions:check <github>")
   .action(async github => {
-    const submissions = (await octokit.paginate(
-      octokit.issues.listComments.endpoint.merge({
-        owner: "jhu-oose",
-        repo: `${process.env.COURSE}-staff`,
-        issue_number: Number(process.env.ISSUE_ASSIGNMENTS)
-      })
-    ))
-      .map(deserializeResponse)
-      .filter(submission => submission.github === github);
+    const submissions = (await getTable(
+      Number(process.env.ISSUE_ASSIGNMENTS)
+    )).filter(submission => submission.github === github);
     for (const submission of submissions) {
       console.log(serialize(submission));
     }
@@ -634,13 +622,7 @@ To request a regrade, comment on this issue within one week. Mention the grader 
 });
 
 program.command("feedbacks:read").action(async () => {
-  const feedbacks = (await octokit.paginate(
-    octokit.issues.listComments.endpoint.merge({
-      owner: "jhu-oose",
-      repo: `${process.env.COURSE}-staff`,
-      issue_number: Number(process.env.ISSUE_FEEDBACKS)
-    })
-  )).map(deserializeResponse);
+  const feedbacks = await getTable(Number(process.env.ISSUE_FEEDBACKS));
   for (const feedback of feedbacks) {
     console.log(`**Assignment:** ${feedback.assignment}
 
@@ -747,15 +729,9 @@ program
   .command("iterations:grades:start <iteration>")
   .action(async iteration => {
     const configuration = await getConfiguration();
-    const submissions = (await octokit.paginate(
-      octokit.issues.listComments.endpoint.merge({
-        owner: "jhu-oose",
-        repo: `${process.env.COURSE}-staff`,
-        issue_number: Number(process.env.ISSUE_ITERATIONS)
-      })
-    ))
-      .map(deserializeResponse)
-      .filter(submission => submission.iteration === iteration);
+    const submissions = (await getTable(
+      Number(process.env.ISSUE_ITERATIONS)
+    )).filter(submission => submission.iteration === iteration);
     const template = await getStaffFile(
       `templates/groups/iterations/${iteration}.md`
     );
@@ -905,7 +881,7 @@ async function getTable(issueNumber: number): Promise<any[]> {
       repo: `${process.env.COURSE}-staff`,
       issue_number: issueNumber
     })
-  )).map(deserializeResponse);
+  )).map(response => deserialize(response.body));
 }
 
 type RepositoryKind = "student" | "group";
@@ -1073,10 +1049,6 @@ function deserialize(issueBody: string): any {
       .replace(/^```json/, "")
       .replace(/```$/, "")
   );
-}
-
-function deserializeResponse(response: { body: string }): any {
-  return deserialize(response.body);
 }
 
 function slugify(string: string): string {
