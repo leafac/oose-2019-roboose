@@ -422,61 +422,26 @@ program
   });
 
 program.command("quiz:grades:start").action(async () => {
-  const githubs = (await octokit.paginate(
-    octokit.teams.listMembers.endpoint.merge({
-      team_id: (await octokit.teams.getByName({
-        org: "jhu-oose",
-        team_slug: `${process.env.COURSE}-students`
-      })).data.id
-    })
-  )).map(s => s.login);
-  const parts = (await getStaffFile("templates/students/quiz.md"))
-    .match(/^# .*/gm)!
-    .slice(1)
-    .map(heading => heading.slice("# ".length));
-  const milestone = (await octokit.issues.createMilestone({
-    owner: "jhu-oose",
-    repo: `${process.env.COURSE}-staff`,
-    title: `Grade quiz`
-  })).data.number;
-  for (const part of parts) {
-    const slug = slugify(part);
-    const path = `grades/students/quiz/${slug}.md`;
-    const template = `# Rubric
-
-# Grades
-
-${githubs
-  .map(
-    github => `## [${github}](https://github.com/jhu-oose/${process.env.COURSE}-student-${github}/blob/master/quiz.pdf)
-
-
-
-**Grader:** 
-
-`
-  )
-  .join("")}
-`;
-    await octokit.repos.createOrUpdateFile({
-      owner: "jhu-oose",
-      repo: `${process.env.COURSE}-staff`,
-      path,
-      message: `Add ${path}`,
-      content: render(template)
-    });
-    await octokit.issues.create({
-      owner: "jhu-oose",
-      repo: `${process.env.COURSE}-staff`,
-      title: `Grade quiz: ${part}`,
-      labels: ["quiz"],
-      milestone,
-      body: `[${path}](https://github.com/jhu-oose/${process.env.COURSE}-staff/blob/master/${path})
-
-/cc @jhu-oose/${process.env.COURSE}-staff
-`
+  const githubs = await getStudents();
+  const submissions = [];
+  for (const github of githubs) {
+    submissions.push({
+      github,
+      commit: (await octokit.repos.getCommit({
+        owner: "jhu-oose",
+        repo: `${process.env.COURSE}-student-${github}`,
+        ref: "master"
+      })).data.sha
     });
   }
+  await startStudentsGrade(
+    "Quiz",
+    "quiz",
+    submissions,
+    "quiz.pdf",
+    "templates/students/quiz.md",
+    "grades/students/quiz"
+  );
 });
 
 program.command("quiz:grades:publish").action(async () => {
