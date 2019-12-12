@@ -718,7 +718,7 @@ program
       await octokit.issues.create({
         owner: "jhu-oose",
         repo: `${process.env.COURSE}-staff`,
-        title: `Grade Iteration ${iteration}: ${github}`,
+        title: `Grade Iteration ${iteration} · ${github}`,
         labels: ["iteration"],
         milestone,
         assignees: [advisor],
@@ -980,7 +980,7 @@ ${submissions
     await octokit.issues.create({
       owner: "jhu-oose",
       repo: `${process.env.COURSE}-staff`,
-      title: `Grade ${subject}: ${part}`,
+      title: `Grade ${subject} · ${part}`,
       labels: [label],
       milestone,
       body: `[\`${path}\`](https://github.com/jhu-oose/${process.env.COURSE}-staff/blob/master/${path})
@@ -1020,7 +1020,7 @@ function slugify(string: string): string {
   return string
     .toLowerCase()
     .replace(/ /g, "-")
-    .replace(/[^a-z\-]/g, "");
+    .replace(/[^a-z0-9\-]/g, "");
 }
 
 program.command("*").action(() => {
