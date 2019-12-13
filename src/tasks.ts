@@ -422,9 +422,8 @@ program
   });
 
 program.command("quiz:grades:start").action(async () => {
-  const githubs = await getStudents();
   const submissions = [];
-  for (const github of githubs) {
+  for (const github of await getStudents()) {
     submissions.push({
       github,
       commit: (await octokit.repos.getCommit({
