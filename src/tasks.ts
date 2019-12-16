@@ -799,6 +799,8 @@ async function computeGrades(gradesPath: string): Promise<Map<GitHub, Grade>> {
     const [, part, rubricText, gradesText] = partMatch;
     const rubric = new Map<string, string>();
     for (const [identifier, ...contents] of splitSection(rubricText)) {
+      if (rubric.has(identifier))
+        errors.push(`Duplicate rubric item in ${partPath}: ${identifier}`);
       for (const line of contents)
         if (!line.match(lineRegExp))
           errors.push(
@@ -821,6 +823,8 @@ async function computeGrades(gradesPath: string): Promise<Map<GitHub, Grade>> {
         continue;
       }
       const [, github, url] = studentLineMatch;
+      if (partGrades.has(github))
+        errors.push(`Duplicate student in part ${partPath}: ${github}`);
       const renderedContents = new Array<string>();
       for (const line of contents) {
         if (rubric.has(line)) renderedContents.push(rubric.get(line)!);
