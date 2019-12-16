@@ -671,6 +671,7 @@ async function startStudentsGrade(
   if (parts === null) {
     console.error(`File ${template} doesn’t include headings for parts.`);
     process.exit(1);
+    throw null;
   }
   const milestone = (await octokit.issues.createMilestone({
     owner: "jhu-oose",
@@ -769,100 +770,137 @@ type GitHub = string;
 type Grade = string;
 
 async function computeGrades(gradesPath: string): Promise<Map<GitHub, Grade>> {
-  const staff = await getStaff();
-  const partsGradesMappings = new Array<Map<GitHub, Grade>>();
-  for (const partPath of await listStaffDirectory(gradesPath)) {
-    const [, rubricSection, gradesSection] = (await getStaffFile(
-      `${gradesPath}/${partPath}`
-    )).match(/^# Rubric(.*)^# Grades(.*)/ms)!;
-    type RubricItemName = string;
-    type RubricItemContent = string;
-    const rubric = rubricSection
-      .split(/^##\s*/m)
+  const errors = new Array<string>();
+  function splitSection(text: string): string[][] {
+    return text
+      .split(/^## /m)
       .slice(1)
-      .reduce((rubric, item) => {
-        const [, name, content] = item.match(/(.*?)\n(.*)/s)!;
-        content.split("\n").forEach(line => {
-          if (!line.match(/^\*\*(-|\+)\d+\*\*/) && line !== "")
-            throw `Error in rubric section (missing points?) (Part: ‘${part}’ · Name: ‘${name}’ · Line: ‘${line}’)`;
-        });
-        return rubric.set(name, content);
-      }, new Map<RubricItemName, RubricItemContent>());
-    const partGradesMappings = gradesSection
-      .split(/^##\s*/m)
-      .slice(1)
-      .reduce((partGradesMappings, entry) => {
-        const [, github, url, rawContent] = entry.match(
-          /\[(.*?)\]\((.*?)\)(.*)/s
-        )!;
-        const content = rawContent
+      .map(entry =>
+        entry
           .split("\n")
-          .map(line => {
-            if (line.match(/^\*\*(-|\+)\d+\*\*/)) {
-              return line;
-            } else if (line.match(/^\*\*Grader:\*\*/)) {
-              const [, grader] = line.match(/^\*\*Grader:\*\*\s*(.*)/)!;
-              if (!staff.includes(grader))
-                throw `Grader ‘${grader}’ isn’t a member of GitHub team ‘${process.env.COURSE}-staff’ (Part: ‘${part}’ · Student: ‘${github}’)`;
-              return line;
-            } else if (line === "") {
-              return line;
-            } else if (rubric.has(line)) {
-              return rubric.get(line);
-            } else {
-              throw `Error in grade section (misuse of rubric?) (Part: ‘${part}’ · Student: ‘${github}’ · Line: ‘${line}’)`;
-            }
-          })
-          .join("\n");
-        return partGradesMappings.set(
-          github,
-          `# [${part}](${url})
-
-${content}
-`
-        );
-      }, new Map<GitHub, Grade>());
-    partsGradesMappings.push(partGradesMappings);
+          .map(line => line.trim())
+          .filter(line => line.length !== 0)
+      );
   }
-  const aggregatedGradesMappings = partsGradesMappings.reduce(
-    (gradesMappings, partGradesMappings) => {
-      const augmentedGradesMappings = new Map();
-      if (gradesMappings.size !== partGradesMappings.size)
-        throw "Different number of students in the grading files for the different parts of the assignment";
-      for (const github of gradesMappings.keys()) {
-        if (!partGradesMappings.has(github))
-          throw `Student ${github} is in one of the grading files, but not the other.`;
-        augmentedGradesMappings.set(
-          github,
-          gradesMappings.get(github)! + partGradesMappings.get(github)!
-        );
-      }
-      return augmentedGradesMappings;
-    }
-  );
-  const totalsGradesMappings = new Map();
-  for (const [github, grade] of aggregatedGradesMappings) {
-    const points = (grade.match(/^\*\*(-|\+)\d+\*\*/gm) || []).map(point =>
-      Number(point.slice("**".length, point.length - "**".length))
+  const lineRegExp = /^\*\*[-+]\d+\*\* /;
+  const staff = await getStaff();
+  const grades = new Map<GitHub, Grade>();
+  for (const partPath of await listStaffDirectory(gradesPath)) {
+    const partText = await getStaffFile(`${gradesPath}/${partPath}`);
+    const partMatch = partText.match(
+      /^# (.*?)\n+# Rubric\n(.*)\n# Grades\n(.*)/s
     );
-    const total = points.reduce((a, b) => a + b, 100);
-    totalsGradesMappings.set(
+    if (partMatch === null) {
+      errors.push(
+        `Part ${partPath} doesn’t have headings for Rubric and Grades.`
+      );
+      continue;
+    }
+    const [, part, rubricText, gradesText] = partMatch;
+    const rubric = new Map<string, string>();
+    for (const [identifier, ...contents] of splitSection(rubricText)) {
+      for (const line of contents)
+        if (!line.match(lineRegExp))
+          errors.push(
+            `Line with bad format in ${partPath}, rubric item ${identifier}.`
+          );
+      rubric.set(identifier, contents.join("\n"));
+    }
+    const partGrades = new Map<GitHub, Grade>();
+    for (const lines of splitSection(gradesText)) {
+      const studentLine = lines[0];
+      const contents = lines.slice(1, lines.length - 1);
+      const graderLine = lines[lines.length - 1];
+      const studentLineMatch = studentLine.match(
+        /^\[`([A-Za-z0-9-]+)`\]\((.+)\)$/
+      );
+      if (studentLineMatch === null) {
+        errors.push(
+          `Student line with bad format in ${partPath}: ${studentLine}`
+        );
+        continue;
+      }
+      const [, github, url] = studentLineMatch;
+      const renderedContents = new Array<string>();
+      for (const line of contents) {
+        if (rubric.has(line)) renderedContents.push(rubric.get(line)!);
+        else if (line.match(lineRegExp)) renderedContents.push(line);
+        else
+          errors.push(
+            `Line with bad format in ${partPath}, student ${github}: ${line}`
+          );
+      }
+      const graderLineMatch = graderLine.match(
+        /^\*\*Grader:\*\* `([A-Za-z0-9-]+)`$/
+      );
+      if (graderLineMatch === null) {
+        errors.push(
+          `Grader line with bad format in ${partPath}, student ${github}: ${graderLine}`
+        );
+        continue;
+      }
+      const [, grader] = graderLineMatch;
+      if (!staff.includes(grader)) {
+        errors.push(
+          `Grader not in staff in ${partPath}, student ${github}: ${grader}`
+        );
+        continue;
+      }
+      partGrades.set(
+        github,
+        `# [${part}](${url})
+
+${renderedContents.join("\n")}
+
+${graderLine}
+`
+      );
+    }
+    if (grades.size === 0) {
+      for (const [github, grade] of partGrades) grades.set(github, grade);
+    } else {
+      if (
+        partGrades.size !== grades.size ||
+        [...partGrades.keys()].some(github => !grades.has(github))
+      )
+        errors.push(
+          `Students in part ${partPath} aren’t the same as in the other parts.`
+        );
+      for (const [github, grade] of partGrades)
+        grades.set(github, grades.get(github) + "\n" + grade);
+    }
+  }
+  for (const [github, grade] of grades) {
+    grades.set(
       github,
       `${grade}
 
 ---
 
-**Total:** ${total}/100
+**Total:** ${computeTotal(grade)}
 
-To accept the grade, close this issue.
+---
 
-To request a regrade, comment on this issue within one week. Mention the grader of the part, for example, if the grader of the part is \`jhu-oose-example-ca\`, mention with \`@jhu-oose-example-ca\`.
+Comment on this issue and \`@mention\` the grader to ask for clarifications or request a regrade.
 
 /cc @${github}
 `
     );
   }
-  return totalsGradesMappings;
+  if (errors.length !== 0) {
+    console.error(errors.join("\n"));
+    process.exit(1);
+  }
+  return grades;
+}
+
+function computeTotal(grade: string, maximum: number = 100): string {
+  const pointsTexts = grade.match(/^\*\*[-+]\d+\*\*/gm) || new Array<string>();
+  const pointsNumbers = pointsTexts.map(pointsText =>
+    Number(pointsText.slice("**".length, pointsText.length - "**".length))
+  );
+  const total = pointsNumbers.reduce((a, b) => a + b, maximum);
+  return `${total}/${maximum}`;
 }
 
 function render(template: string, scope: object = {}): string {
