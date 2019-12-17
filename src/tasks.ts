@@ -11,6 +11,25 @@ import fs from "fs";
 const program = new Command();
 
 program
+  .command("check-installation")
+  .description(
+    "check that you installed everything correctly and Roboose is ready to go"
+  )
+  .action(async () => {
+    try {
+      await octokit.repos.get({
+        owner: "jhu-oose",
+        repo: "instructors"
+      });
+      console.log("Roboose is ready to go!");
+    } catch (error) {
+      console.error(
+        `Ooops, something is wrong with your installation: ${error}`
+      );
+    }
+  });
+
+program
   .command("initialize")
   .description(
     "create the teams and repositories for staff and students, and the issues that serve as a database"
@@ -103,11 +122,11 @@ program
   });
 
 program.command("students:check").action(async () => {
-  const configuration = await getConfiguration();
+  const { hopkinses } = await getConfiguration();
   const registrations = await getTable(Number(process.env.ISSUE_STUDENTS));
   for (const { github, hopkins } of registrations) {
     await checkFile("assignments/0.md", "student", [github]);
-    if (!configuration.hopkinses.includes(hopkins)) {
+    if (!hopkinses.includes(hopkins)) {
       try {
         await octokit.repos.get({
           owner: "jhu-oose",
@@ -414,7 +433,7 @@ program
 program
   .command("iterations:grades:start <iteration>")
   .action(async iteration => {
-    const configuration = await getConfiguration();
+    const { advisors } = await getConfiguration();
     const submissions = (await getTable(
       Number(process.env.ISSUE_ITERATIONS)
     )).filter(submission => submission.iteration === iteration);
@@ -428,7 +447,7 @@ program
     })).data.number;
     for (const { github, commit } of submissions) {
       const path = `grades/groups/iterations/${iteration}/${github}.md`;
-      const advisor = configuration.advisors[github];
+      const advisor = advisors[github];
       await octokit.repos.createOrUpdateFile({
         owner: "jhu-oose",
         repo: `${process.env.COURSE}-staff`,
@@ -537,8 +556,8 @@ async function getGroups(): Promise<string[]> {
       org: "jhu-oose"
     })
   ))
-    .filter(team => team.slug.startsWith(`${process.env.COURSE}-group-`))
-    .map(team => team.slug);
+    .filter(team => team.name.startsWith(`${process.env.COURSE}-group-`))
+    .map(team => team.name.slice(`${process.env.COURSE}-group-`.length));
 }
 
 async function getStaff(): Promise<string[]> {
