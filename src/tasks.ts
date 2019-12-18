@@ -206,7 +206,7 @@ program
 program
   .command("students:files:check <path>")
   .description(
-    "check that a certain file path exists in the repositories of every student; this is useful to check whether the students:files:upload command succeeded"
+    "check that a certain file exists in the repositories of every student; this is useful to check whether the students:files:upload command succeeded"
   )
   .action(async path => {
     await checkFile(path, "student", await getStudents());
@@ -353,36 +353,51 @@ program
     }
   });
 
-program.command("quiz:grades:start").action(async () => {
-  const submissions = new Array<{ github: string; commit: string }>();
-  for (const github of await getStudents()) {
-    submissions.push({
-      github,
-      commit: (await octokit.repos.getCommit({
-        owner: "jhu-oose",
-        repo: `${process.env.COURSE}-student-${github}`,
-        ref: "master"
-      })).data.sha
-    });
-  }
-  await startStudentsGrade(
-    "Quiz",
-    "quiz",
-    submissions,
-    "quiz.pdf",
-    "templates/students/quiz.md",
-    "grades/students/quiz"
-  );
-});
+program
+  .command("quiz:grades:start")
+  .description(
+    "start the quiz grading process; this looks a lot like the assignments:grades:start command, except that the submissions aren’t the database, they’re just whatever is on their repository at the moment, because we assume you’re running this right after the quiz:submissions:add command"
+  )
+  .action(async () => {
+    const submissions = new Array<{ github: string; commit: string }>();
+    for (const github of await getStudents()) {
+      submissions.push({
+        github,
+        commit: (await octokit.repos.getCommit({
+          owner: "jhu-oose",
+          repo: `${process.env.COURSE}-student-${github}`,
+          ref: "master"
+        })).data.sha
+      });
+    }
+    await startStudentsGrade(
+      "Quiz",
+      "quiz",
+      submissions,
+      "quiz.pdf",
+      "templates/students/quiz.md",
+      "grades/students/quiz"
+    );
+  });
 
-program.command("quiz:grades:publish").action(async () => {
-  await publishStudentsGrades("Quiz", "grades/students/quiz");
-});
+program
+  .command("quiz:grades:publish")
+  .description(
+    "publish the quiz grades; this is equivalent to the assignments:grades:publish command, but for the quiz"
+  )
+  .action(async () => {
+    await publishStudentsGrades("Quiz", "grades/students/quiz");
+  });
 
-program.command("feedbacks:read").action(async () => {
-  const feedbacks = await getTable(Number(process.env.ISSUE_FEEDBACKS));
-  for (const feedback of feedbacks) {
-    console.log(`**Assignment:** ${feedback.assignment}
+program
+  .command("feedbacks:read")
+  .description(
+    "compile the feedback collected in the form for assignment submission"
+  )
+  .action(async () => {
+    const feedbacks = await getTable(Number(process.env.ISSUE_FEEDBACKS));
+    for (const feedback of feedbacks) {
+      console.log(`**Assignment:** ${feedback.assignment}
 
 **Lecture Liked:** ${feedback.feedback.lecture.liked}
 
@@ -394,10 +409,10 @@ program.command("feedbacks:read").action(async () => {
 
 ---
 `);
-  }
-  for (const feedback of feedbacks) {
-    if (feedback.feedback.course !== undefined) {
-      console.log(`**Course Recommend:** ${feedback.feedback.course.recommend}
+    }
+    for (const feedback of feedbacks) {
+      if (feedback.feedback.course !== undefined) {
+        console.log(`**Course Recommend:** ${feedback.feedback.course.recommend}
 
 **Course Liked:** ${feedback.feedback.course.liked}
 
@@ -409,48 +424,75 @@ program.command("feedbacks:read").action(async () => {
 
 ---
 `);
+      }
     }
-  }
-});
+  });
 
-program.command("groups:delete <identifier>").action(async identifier => {
-  console.log(
-    `You must manually remove the group data from https://github.com/jhu-oose/${process.env.COURSE}-staff/issues/${process.env.ISSUE_GROUPS}`
-  );
-  try {
-    await octokit.teams.delete({
-      team_id: (await octokit.teams.getByName({
-        org: "jhu-oose",
-        team_slug: `${process.env.COURSE}-group-${identifier}`
-      })).data.id
-    });
-  } catch {}
-  try {
-    await octokit.repos.delete({
-      owner: "jhu-oose",
-      repo: `${process.env.COURSE}-group-${identifier}`
-    });
-  } catch {}
-});
+program
+  .command("groups:delete <github>")
+  .description("delete a group from the course")
+  .action(async github => {
+    if (
+      !(await inquirer.prompt([
+        {
+          name: "confirm",
+          message: `You’re about to delete group ${github} from the course. THIS ACTION CAN’T BE REVERSED. Are you sure you want to continue?`,
+          type: "confirm",
+          default: false
+        }
+      ])).confirm
+    )
+      process.exit(0);
+    console.log(
+      `You must manually remove the group data from https://github.com/jhu-oose/${process.env.COURSE}-staff/issues/${process.env.ISSUE_GROUPS}`
+    );
+    try {
+      await octokit.teams.delete({
+        team_id: (await octokit.teams.getByName({
+          org: "jhu-oose",
+          team_slug: `${process.env.COURSE}-group-${github}`
+        })).data.id
+      });
+    } catch {}
+    try {
+      await octokit.repos.delete({
+        owner: "jhu-oose",
+        repo: `${process.env.COURSE}-group-${github}`
+      });
+    } catch {}
+  });
 
 program
   .command("groups:files:upload <source> <destination>")
+  .description(
+    "upload a file to the groups repositories; this is similar to the students:files:upload command"
+  )
   .action(async (source, destination) => {
     await uploadFile(source, destination, "group", await getGroups());
   });
 
-program.command("groups:files:check <path>").action(async path => {
-  await checkFile(path, "group", await getGroups());
-});
-
-program.command("groups:files:delete <path>").action(async path => {
-  await deleteFile(path, "group", await getGroups());
-});
+program
+  .command("groups:files:check <path>")
+  .description(
+    "check that a certain file exists in the repositories of every group; this is similar to the students:files:check command"
+  )
+  .action(async path => {
+    await checkFile(path, "group", await getGroups());
+  });
 
 program
-  .command("iterations:collect <iteration>")
+  .command("groups:files:delete <path>")
   .description(
-    "run this when iteration is due to put group projects in database"
+    "delete a file from groups repositories; this is similar to the students:files:delete command"
+  )
+  .action(async path => {
+    await deleteFile(path, "group", await getGroups());
+  });
+
+program
+  .command("iterations:submissions:add <iteration>")
+  .description(
+    "go over the current state of each group’s repository and put it in the database as a submission; run this at the end of each iteration; this is similar in spirit to the form students use to submit their individual assignments and to the quiz:submissions:add command"
   )
   .action(async iteration => {
     for (const github of await getGroups()) {
@@ -485,6 +527,9 @@ program
 
 program
   .command("iterations:grades:start <iteration>")
+  .description(
+    "start the iteration grading process; this is similar to the assignments:grades:start command, except that the grading is broken per group because each advisor grades their groups, while assignments are broken per part, because each grader grades one part"
+  )
   .action(async iteration => {
     const { advisors } = await getConfiguration();
     const submissions = (await getTable(
@@ -525,6 +570,9 @@ program
 
 program
   .command("iterations:grades:publish <iteration>")
+  .description(
+    "publish the grades for an iteration; this is similar to the assignments:grades:publish command"
+  )
   .action(async iteration => {
     const gradesPath = `grades/groups/iterations/${iteration}/`;
     for (const node of await listStaffDirectory(gradesPath)) {
@@ -557,7 +605,9 @@ ${footer(`jhu-oose/${process.env.COURSE}-group-${slugify(github)}`)}
 
 program
   .command("one-off")
-  .description("hack task to run locally (never commit changes to this)")
+  .description(
+    "this doesn’t do anything by default; it exists so that you can quickly write a script to run once; don’t commit changes to this command"
+  )
   .action(async () => {});
 
 dotenv.config();
