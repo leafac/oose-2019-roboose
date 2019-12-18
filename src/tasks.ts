@@ -30,9 +30,9 @@ program
   });
 
 program
-  .command("initialize")
+  .command("init")
   .description(
-    "create the teams and repositories for staff and students, and the issues that serve as a database"
+    "start the course by creating the teams and repositories for staff and students as well as the issues that serve as a database; you must paste the result of running this command into your .env file for other commands to work"
   )
   .action(async () => {
     await octokit.teams.create({
@@ -121,73 +121,111 @@ program
     }
   });
 
-program.command("students:check").action(async () => {
-  const { hopkinses } = await getConfiguration();
-  const registrations = await getTable(Number(process.env.ISSUE_STUDENTS));
-  for (const { github, hopkins } of registrations) {
-    await checkFile("assignments/0.md", "student", [github]);
-    if (!hopkinses.includes(hopkins)) {
-      try {
-        await octokit.repos.get({
-          owner: "jhu-oose",
-          repo: `${process.env.COURSE}-student-${github}`
-        });
-        console.log(
-          `Student doesn’t appear registered in SIS. GitHub: ${github}. Hopkins: ${hopkins}.`
-        );
-      } catch {}
+program
+  .command("students:check")
+  .description(
+    "check student registration, including whether Roboose was successful in creating their repositories and putting the template files in there, and whether the students appear registered in SIS"
+  )
+  .action(async () => {
+    const { hopkinses } = await getConfiguration();
+    const registrations = await getTable(Number(process.env.ISSUE_STUDENTS));
+    for (const { github, hopkins } of registrations) {
+      await checkFile("assignments/0.md", "student", [github]);
+      if (!hopkinses.includes(hopkins)) {
+        try {
+          await octokit.repos.get({
+            owner: "jhu-oose",
+            repo: `${process.env.COURSE}-student-${github}`
+          });
+          console.log(
+            `Student doesn’t appear registered in SIS. GitHub: ${github}. Hopkins: ${hopkins}.`
+          );
+        } catch {}
+      }
     }
-  }
-});
+  });
 
-program.command("students:profiles").action(async () => {
-  for (const github of await getStudents()) {
-    await open(
-      `https://github.com/jhu-oose/${process.env.COURSE}-student-${github}`
+program
+  .command("students:profiles")
+  .description("open the students profiles on the browser")
+  .action(async () => {
+    for (const github of await getStudents()) {
+      await open(
+        `https://github.com/jhu-oose/${process.env.COURSE}-student-${github}`
+      );
+      await inquirer.prompt([
+        { name: "Press ENTER to open next student’s profile" }
+      ]);
+    }
+  });
+
+program
+  .command("students:delete <github>")
+  .description("delete a student from the course")
+  .action(async github => {
+    if (
+      !(await inquirer.prompt([
+        {
+          name: "confirm",
+          message: `You’re about to delete student ${github} from the course. THIS ACTION CAN’T BE REVERSED. Are you sure you want to continue?`,
+          type: "confirm",
+          default: false
+        }
+      ])).confirm
+    )
+      process.exit(0);
+    console.log(
+      `You must manually remove the student data from https://github.com/jhu-oose/${process.env.COURSE}-staff/issues/${process.env.ISSUE_STUDENTS}`
     );
-    await inquirer.prompt([
-      { name: "Press ENTER to open next student’s profile" }
-    ]);
-  }
-});
-
-program.command("students:delete <github>").action(async github => {
-  console.log(
-    `You must manually remove the student data from https://github.com/jhu-oose/${process.env.COURSE}-staff/issues/${process.env.ISSUE_STUDENTS}`
-  );
-  console.log(
-    `You may need to cancel the invitation manually at https://github.com/orgs/jhu-oose/people if the student you’re deleting hasn’t accepted it yet (there’s no endpoint in the GitHub API to automate this)`
-  );
-  try {
-    await octokit.orgs.removeMember({
-      org: "jhu-oose",
-      username: github
-    });
-  } catch {}
-  try {
-    await octokit.repos.delete({
-      owner: "jhu-oose",
-      repo: `${process.env.COURSE}-student-${github}`
-    });
-  } catch {}
-});
+    console.log(
+      `You may need to cancel the invitation manually at https://github.com/orgs/jhu-oose/people if the student you’re deleting hasn’t accepted it yet (there’s no endpoint in the GitHub API to automate this)`
+    );
+    try {
+      await octokit.orgs.removeMember({
+        org: "jhu-oose",
+        username: github
+      });
+    } catch {}
+    try {
+      await octokit.repos.delete({
+        owner: "jhu-oose",
+        repo: `${process.env.COURSE}-student-${github}`
+      });
+    } catch {}
+  });
 
 program
   .command("students:files:upload <source> <destination>")
+  .description(
+    "upload a file to the students repositories, where <source> refers to the path of the file to be uploaded on the staff repository, and <destination> refers to the path that will be created on the students repositories; the file must not exist in the students repositories"
+  )
   .action(async (source, destination) => {
     await uploadFile(source, destination, "student", await getStudents());
   });
 
-program.command("students:files:check <path>").action(async path => {
-  await checkFile(path, "student", await getStudents());
-});
+program
+  .command("students:files:check <path>")
+  .description(
+    "check that a certain file path exists in the repositories of every student; this is useful to check whether the students:files:upload command succeeded"
+  )
+  .action(async path => {
+    await checkFile(path, "student", await getStudents());
+  });
 
-program.command("students:files:delete <path>").action(async path => {
-  await deleteFile(path, "student", await getStudents());
-});
+program
+  .command("students:files:delete <path>")
+  .description(
+    "delete a file from students repositories; this is useful to revert mistakes when running the students:files:upload command"
+  )
+  .action(async path => {
+    await deleteFile(path, "student", await getStudents());
+  });
 
 program
   .command("assignments:templates:add <assignment>")
+  .description(
+    "upload the template for an assignment to students repositories; this is just a special case of the students:files:upload command with the appropriate paths"
+  )
   .action(async assignment => {
     await uploadFile(
       `templates/students/assignments/${assignment}.md`,
@@ -199,6 +237,9 @@ program
 
 program
   .command("assignments:submissions:add <assignment> <github> <commit> <time>")
+  .description(
+    "add a submission for an assignment; this is useful for when students fail to submit on their own through the web interface"
+  )
   .action(async (assignment, github, commit, time) => {
     await octokit.repos.getContents({
       owner: "jhu-oose",
@@ -230,7 +271,10 @@ program
   });
 
 program
-  .command("assignments:submissions:check <github>")
+  .command("assignments:submissions:list <github>")
+  .description(
+    "list the assignment submissions of a given student; this is useful for investigating problems in submission before running the assignments:submissions:add command"
+  )
   .action(async github => {
     const submissions = (await getTable(
       Number(process.env.ISSUE_ASSIGNMENTS)
@@ -242,6 +286,9 @@ program
 
 program
   .command("assignments:grades:start <assignment>")
+  .description(
+    "start the assignment grading process; this looks at the assignment template that students should have filled in to figure out the parts of the assignment; it also looks at the list of submissions in the database; it then creates one file per assignment part for the graders; it also creates a milestone with one issue per assignment part to track the progress"
+  )
   .action(async assignment => {
     const allSubmissions = await getTable(
       Number(process.env.ISSUE_ASSIGNMENTS)
@@ -268,6 +315,9 @@ program
 
 program
   .command("assignments:grades:publish <assignment>")
+  .description(
+    "publish the grades for an assignment after the graders are done with their part; the grades are published as GitHub Issues on the students repositories and they may ask for clarifications or regrades with comments on that issue; this command works by looking at the grades files for each assignment part and aggregating the grades by student"
+  )
   .action(async assignment => {
     await publishStudentsGrades(
       `Assignment ${assignment}`,
@@ -277,6 +327,9 @@ program
 
 program
   .command("quiz:submissions:add <path-to-scanned-pdfs>")
+  .description(
+    "upload the PDFs with the quiz to the students repositories; the name of each PDF must be the corresponding student’s GitHub identifier"
+  )
   .action(async pathToScannedPdfs => {
     const pdfs = fs
       .readdirSync(pathToScannedPdfs)
