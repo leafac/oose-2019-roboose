@@ -424,7 +424,7 @@ program
         title: `Iteration ${iteration} received`,
         body: `${serialize(submission)}
 
-/cc @jhu-oose/${process.env.COURSE}-group-${github.toLowerCase()}
+/cc @jhu-oose/${process.env.COURSE}-group-${slugify(github)}
 `
       });
     }
@@ -473,27 +473,18 @@ program
 program
   .command("iterations:grades:publish <iteration>")
   .action(async iteration => {
-    for (const node of await listStaffDirectory(
-      `grades/groups/iterations/${iteration}/`
-    )) {
+    const gradesPath = `grades/groups/iterations/${iteration}/`;
+    for (const node of await listStaffDirectory(gradesPath)) {
       const github = node.slice(0, node.length - ".md".length);
       await octokit.issues.create({
         owner: "jhu-oose",
         repo: `${process.env.COURSE}-group-${github}`,
         title: `Grade for Iteration ${iteration}`,
-        body: `${await getStaffFile(
-          `grades/groups/iterations/${iteration}/${node}`
-        )}
+        body: `${await getStaffFile(`${gradesPath}/${node}`)}
 
 ---
 
-To accept, close this issue.
-
-To request a change, comment on this issue within one week. Mention the advisor, for example, if your advisor is \`jhu-oose-example-ca\`, mention with \`@jhu-oose-example-ca\`.
-
-You may get some points back for things that you fix, and you have to discuss this with your advisor.
-
-/cc @jhu-oose/${process.env.COURSE}-group-${github.toLowerCase()}
+${footer(`jhu-oose/${process.env.COURSE}-group-${slugify(github)}`)}
 `
       });
     }
@@ -894,19 +885,23 @@ ${graderLine}
     }
   }
   for (const [github, grade] of grades) {
+    const pointsTexts =
+      grade.match(/^\*\*[-+]\d+\*\*/gm) || new Array<string>();
+    const pointsNumbers = pointsTexts.map(pointsText =>
+      Number(pointsText.slice("**".length, pointsText.length - "**".length))
+    );
+    const total = pointsNumbers.reduce((a, b) => a + b, 100);
     grades.set(
       github,
       `${grade}
 
 ---
 
-**Total:** ${computeTotal(grade)}
+**Total:** ${total}/100
 
 ---
 
-Comment on this issue and \`@mention\` the grader to ask for clarifications or request a regrade.
-
-/cc @${github}
+${footer(github)}
 `
     );
   }
@@ -917,13 +912,11 @@ Comment on this issue and \`@mention\` the grader to ask for clarifications or r
   return grades;
 }
 
-function computeTotal(grade: string, maximum: number = 100): string {
-  const pointsTexts = grade.match(/^\*\*[-+]\d+\*\*/gm) || new Array<string>();
-  const pointsNumbers = pointsTexts.map(pointsText =>
-    Number(pointsText.slice("**".length, pointsText.length - "**".length))
-  );
-  const total = pointsNumbers.reduce((a, b) => a + b, maximum);
-  return `${total}/${maximum}`;
+function footer(mention: string): string {
+  return `Comment on this issue and \`@mention\` the grader to ask for clarifications or request a regrade.
+
+/cc @${mention}
+`;
 }
 
 function render(template: string, scope: object = {}): string {
