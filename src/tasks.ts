@@ -1054,8 +1054,13 @@ function slugify(string: string): string {
     .replace(/[^a-z0-9\-]/g, "");
 }
 
-program.command("*").action(() => {
-  program.help();
-});
+program
+  .command("*")
+  .description(
+    "show the help; this runs if you don’t specify which command to run, for example, when you write just $ npm run dev:task"
+  )
+  .action(() => {
+    program.help();
+  });
 if (process.argv.length === 2) program.help();
 program.parse(process.argv);
