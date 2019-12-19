@@ -222,7 +222,7 @@ program
   });
 
 program
-  .command("assignments:templates:add <assignment>")
+  .command("assignments:templates:upload <assignment>")
   .description(
     "upload the template for an assignment to students repositories; this is just a special case of the students:files:upload command with the appropriate paths"
   )
@@ -236,9 +236,9 @@ program
   });
 
 program
-  .command("assignments:submissions:add <assignment> <github> <commit> <time>")
+  .command("assignments:submissions:create <assignment> <github> <commit> <time>")
   .description(
-    "add a submission for an assignment; this is useful for when students fail to submit on their own through the web interface"
+    "create a submission for an assignment; this is useful for when students fail to submit on their own through the web interface"
   )
   .action(async (assignment, github, commit, time) => {
     await octokit.repos.getContents({
@@ -273,7 +273,7 @@ program
 program
   .command("assignments:submissions:list <github>")
   .description(
-    "list the assignment submissions of a given student; this is useful for investigating problems in submission before running the assignments:submissions:add command"
+    "list the assignment submissions of a given student; this is useful for investigating problems in submission before running the assignments:submissions:create command"
   )
   .action(async github => {
     const submissions = (await getTable(
@@ -326,7 +326,7 @@ program
   });
 
 program
-  .command("quiz:submissions:add <path-to-scanned-pdfs>")
+  .command("quiz:submissions:upload <path-to-scanned-pdfs>")
   .description(
     "upload the PDFs with the quiz to the students repositories; the name of each PDF must be the corresponding student’s GitHub identifier"
   )
@@ -356,7 +356,7 @@ program
 program
   .command("quiz:grades:start")
   .description(
-    "start the quiz grading process; this looks a lot like the assignments:grades:start command, except that the submissions aren’t the database, they’re just whatever is on their repository at the moment, because we assume you’re running this right after the quiz:submissions:add command"
+    "start the quiz grading process; this looks a lot like the assignments:grades:start command, except that the submissions aren’t the database, they’re just whatever is on their repository at the moment, because we assume you’re running this right after the quiz:submissions:upload command"
   )
   .action(async () => {
     const submissions = new Array<{ github: string; commit: string }>();
@@ -490,9 +490,9 @@ program
   });
 
 program
-  .command("iterations:submissions:add <iteration>")
+  .command("iterations:submissions:create <iteration>")
   .description(
-    "go over the current state of each group’s repository and put it in the database as a submission; run this at the end of each iteration; this is similar in spirit to the form students use to submit their individual assignments and to the quiz:submissions:add command"
+    "go over the current state of each group’s repository and put it in the database as a submission; run this at the end of each iteration; this is similar in spirit to the form students use to submit their individual assignments"
   )
   .action(async iteration => {
     for (const github of await getGroups()) {
