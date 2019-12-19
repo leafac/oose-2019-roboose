@@ -236,7 +236,9 @@ program
   });
 
 program
-  .command("assignments:submissions:create <assignment> <github> <commit> <time>")
+  .command(
+    "assignments:submissions:create <assignment> <github> <commit> <time>"
+  )
   .description(
     "create a submission for an assignment; this is useful for when students fail to submit on their own through the web interface"
   )
@@ -276,9 +278,9 @@ program
     "list the assignment submissions of a given student; this is useful for investigating problems in submission before running the assignments:submissions:create command"
   )
   .action(async github => {
-    const submissions = (await getTable(
-      Number(process.env.ISSUE_ASSIGNMENTS)
-    )).filter(submission => submission.github === github);
+    const submissions = (await getAssignmentSubmissions()).filter(
+      submission => submission.github === github
+    );
     for (const submission of submissions) {
       console.log(serialize(submission));
     }
@@ -290,18 +292,8 @@ program
     "start the assignment grading process; this looks at the assignment template that students should have filled in to figure out the parts of the assignment; it also looks at the list of submissions in the database; it then creates one file per assignment part for the graders; it also creates a milestone with one issue per assignment part to track the progress"
   )
   .action(async assignment => {
-    const allSubmissions = await getTable(
-      Number(process.env.ISSUE_ASSIGNMENTS)
-    );
-    const submissions = allSubmissions.filter(
-      submission =>
-        submission.assignment === assignment &&
-        !allSubmissions.some(
-          otherSubmission =>
-            submission.assignment === otherSubmission.assignment &&
-            submission.github === otherSubmission.github &&
-            Date.parse(submission.time) < Date.parse(otherSubmission.time)
-        )
+    const submissions = (await getAssignmentSubmissions()).filter(
+      submission => submission.assignment === assignment
     );
     await startStudentsGrade(
       `Assignment ${assignment}`,
@@ -692,6 +684,37 @@ async function getTable(issueNumber: number): Promise<any[]> {
       issue_number: issueNumber
     })
   )).map(response => deserialize(response.body));
+}
+
+async function getAssignmentSubmissions(): Promise<any[]> {
+  const { assignmentsDueTimes } = await getConfiguration();
+  const allSubmissions = await getTable(Number(process.env.ISSUE_ASSIGNMENTS));
+  const latestSubmissions = allSubmissions.filter(
+    submission =>
+      !allSubmissions.some(
+        otherSubmission =>
+          submission.assignment === otherSubmission.assignment &&
+          submission.github === otherSubmission.github &&
+          Date.parse(submission.time) < Date.parse(otherSubmission.time)
+      )
+  );
+  const submissionsWithLateDays =
+    assignmentsDueTimes === undefined
+      ? latestSubmissions
+      : latestSubmissions.map(submission => {
+          return {
+            ...submission,
+            lateDays: Math.ceil(
+              Math.max(
+                0,
+                new Date(submission.time).getTime() -
+                  new Date(assignmentsDueTimes[submission.assignment]).getTime()
+              ) /
+                (1000 * 60 * 60 * 24)
+            )
+          };
+        });
+  return submissionsWithLateDays;
 }
 
 type RepositoryKind = "student" | "group";
