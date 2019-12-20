@@ -574,7 +574,7 @@ program
     "publish the grades for an iteration; this is similar to the assignments:grades:publish command"
   )
   .action(async iteration => {
-    const gradesPath = `grades/groups/iterations/${iteration}/`;
+    const gradesPath = `grades/groups/iterations/${iteration}`;
     for (const node of await listStaffDirectory(gradesPath)) {
       const github = node.slice(0, node.length - ".md".length);
       await octokit.issues.create({
