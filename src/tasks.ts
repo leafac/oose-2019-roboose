@@ -733,12 +733,16 @@ ${tabularize([...studentsGrades.values()], [
   ["Hopkins", (grade: any) => grade.hopkins],
   ...assignments.map(assignment => [
     `Assignment ${assignment}`,
-    (grade: any) => grade.assignments.get(assignment) || "—"
+    (grade: any) =>
+      !grade.assignments.has(assignment)
+        ? "—"
+        : grade.assignments.get(assignment)
   ]),
   ["Assignments Average", (grade: any) => grade.assignmentsAverage],
   ...assignments.map(assignment => [
     `Late Days for Assignment ${assignment}`,
-    (grade: any) => grade.lateDays.get(assignment) || "—"
+    (grade: any) =>
+      !grade.lateDays.has(assignment) ? "—" : grade.lateDays.get(assignment)
   ]),
   ["Late Days Total", (grade: any) => grade.lateDaysTotal],
   ["Late Days Penalty", (grade: any) => grade.lateDaysPenalty],
