@@ -627,6 +627,7 @@ program
     const studentsGroupMemberships = await getStudentsGroupMemberships();
     const assignments = await listStaffDirectory("grades/students/assignments");
     const iterations = await listStaffDirectory("grades/groups/iterations");
+    const assignmentsSubmissions = await getAssignmentsSubmissions();
     for (const github of students)
       studentsGrades.set(github, {
         github,
@@ -636,7 +637,6 @@ program
         assignments: new Map<string, number>(),
         lateDays: new Map<string, number>()
       });
-    const assignmentsSubmissions = await getAssignmentsSubmissions();
     for (const assignment of assignments) {
       const grades = await computeGrades(
         `grades/students/assignments/${assignment}`
