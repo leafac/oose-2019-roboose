@@ -620,18 +620,25 @@ program
     } = await getConfiguration();
     const studentsGrades = new Map<GitHub, any>();
     const groupsGrades = new Map<GitHub, any>();
+    const gradesCounts = new Map<string, number>();
+    const students = await getStudents();
+    const groups = await getGroups();
     const registrations = await getTable(Number(process.env.ISSUE_STUDENTS));
-    for (const student of await getStudents())
-      studentsGrades.set(student, {
-        hopkins: registrations.find(({ github }) => github === student).hopkins,
+    const studentsGroupMemberships = await getStudentsGroupMemberships();
+    const assignments = await listStaffDirectory("grades/students/assignments");
+    const iterations = await listStaffDirectory("grades/groups/iterations");
+    for (const github of students)
+      studentsGrades.set(github, {
+        github,
+        hopkins: registrations.find(
+          ({ github: registrationGithub }) => registrationGithub === github
+        ).hopkins,
         assignments: new Map<string, number>(),
         lateDays: new Map<string, number>()
       });
     const assignmentsSubmissions = await getAssignmentsSubmissions();
-    for (const assignment of await listStaffDirectory(
-      "grades/students/assignments"
-    )) {
-      const assignmentGrades = await computeGrades(
+    for (const assignment of assignments) {
+      const grades = await computeGrades(
         `grades/students/assignments/${assignment}`
       );
       for (const [github, grade] of studentsGrades) {
@@ -642,13 +649,11 @@ program
           continue;
         grade.assignments.set(
           assignment,
-          !assignmentGrades.has(github)
-            ? 0
-            : extractTotal(assignmentGrades.get(github)!)
+          !grades.has(github) ? 0 : extractTotal(grades.get(github)!)
         );
         grade.lateDays.set(
           assignment,
-          !assignmentGrades.has(github)
+          !grades.has(github)
             ? 0
             : assignmentsSubmissions.find(
                 ({
@@ -664,9 +669,7 @@ program
     const quizGrades = await computeGrades(`grades/students/quiz`);
     for (const [github, grade] of studentsGrades)
       grade.quiz = extractTotal(quizGrades.get(github)!);
-    const iterations = await listStaffDirectory("grades/groups/iterations");
-    const groupsMemberships = await getGroupsMemberships();
-    for (const group of await getGroups()) {
+    for (const group of groups) {
       const grades = new Map<string, number>();
       for (const iteration of iterations)
         grades.set(
@@ -679,17 +682,14 @@ program
         );
       const total = average([...grades.values()].slice(0, grades.size - 1));
       const project = grades.get(iterations[iterations.length - 1]);
-      groupsGrades.set(group, {
-        iterations: grades,
-        iterationsTotal: total,
-        project
-      });
-      for (const student of groupsMemberships.get(group)!) {
-        const grade = studentsGrades.get(student);
+      groupsGrades.set(group, { group, grades, total, project });
+      for (const [student, grade] of studentsGrades) {
+        if (studentsGroupMemberships.get(student) !== group) continue;
+        grade.group = group;
         grade.iterations = grades;
         grade.iterationsTotal = total;
         grade.project = project;
-        grade.pointAdjustments =
+        grade.pointAdjustment =
           pointAdjustments[student] === undefined
             ? 0
             : pointAdjustments[student].points;
@@ -701,7 +701,7 @@ program
         -2 * Math.max(0, grade.lateDaysTotal - allowedLateDays);
       grade.assignmentsAverage = average([...grade.assignments.values()]);
       grade.assignmentsTotal = grade.assignmentsAverage + grade.lateDaysPenalty;
-      grade.projectTotal = grade.project + grade.pointAdjustments;
+      grade.projectTotal = grade.project + grade.pointAdjustment;
       grade.total =
         breakdown.assignments * grade.assignmentsTotal +
         breakdown.quiz * grade.quiz +
@@ -713,13 +713,77 @@ program
           break;
         }
       }
-      /*
-      Outputs
-        Students
-        Groups
-        Count cutoffs
-      */
     }
+    for (const letter of Object.keys(cutoffs))
+      gradesCounts.set(
+        letter,
+        [...studentsGrades.values()].filter(({ grade }) => grade === letter)
+          .length
+      );
+    console.log(`# Students
+
+${tabularize(
+  [
+    "GitHub",
+    "Hopkins",
+    ...assignments.map(assignment => `Assignment ${assignment}`),
+    "Assignments Average",
+    ...assignments.map(assignment => `Late Days for Assignment ${assignment}`),
+    "Late Days Total",
+    "Late Days Penalty",
+    "Assignments Total",
+    "Quiz",
+    "Group",
+    ...iterations.map(iteration => `Iteration ${iteration}`),
+    "Iterations Total",
+    "Project",
+    "Point Adjustment",
+    "Project Total",
+    "Total",
+    "Grade"
+  ],
+  [...studentsGrades.values()].map(grade => [
+    grade.github,
+    grade.hopkins,
+    ...[assignments.map(assignment => grade.assignments[assignment] || "—")],
+    grade.assignmentsAverage,
+    ...[assignments.map(assignment => grade.lateDays[assignment] || "—")],
+    grade.lateDaysTotal,
+    grade.lateDaysPenalty,
+    grade.assignmentsTotal,
+    grade.quiz,
+    grade.group,
+    ...grade.iterations,
+    grade.iterationsTotal,
+    grade.project,
+    grade.pointAdjustment,
+    grade.projectTotal,
+    grade.total,
+    grade.grade
+  ])
+)}
+
+# Groups
+
+${tabularize(
+  [
+    "Group",
+    ...iterations.map(iteration => `Iteration ${iteration}`),
+    "Iterations Total",
+    "Project"
+  ],
+  [...groupsGrades.values()].map(grade => [
+    grade.group,
+    ...grade.grades,
+    grade.total,
+    grade.project
+  ])
+)}
+
+# Counts
+
+${tabularize(["Grade", "Count"], [...gradesCounts.entries()])}
+`);
   });
 
 program
@@ -773,21 +837,21 @@ async function getGroups(): Promise<string[]> {
     .map(team => team.name.slice(`${process.env.COURSE}-group-`.length));
 }
 
-async function getGroupsMemberships(): Promise<Map<string, Array<string>>> {
-  const groupsMemberships = new Map<string, Array<string>>();
-  for (const group of await getGroups())
-    groupsMemberships.set(
-      group,
-      (await octokit.paginate(
-        octokit.teams.listMembers.endpoint.merge({
-          team_id: (await octokit.teams.getByName({
-            org: "jhu-oose",
-            team_slug: `${process.env.COURSE}-group-${group}`
-          })).data.id
-        })
-      )).map(({ login }) => login)
-    );
-  return groupsMemberships;
+async function getStudentsGroupMemberships(): Promise<Map<string, string>> {
+  const studentsGroupMemberships = new Map<string, string>();
+  for (const group of await getGroups()) {
+    const students = (await octokit.paginate(
+      octokit.teams.listMembers.endpoint.merge({
+        team_id: (await octokit.teams.getByName({
+          org: "jhu-oose",
+          team_slug: `${process.env.COURSE}-group-${group}`
+        })).data.id
+      })
+    )).map(member => member.login);
+    for (const student of students)
+      studentsGroupMemberships.set(student, group);
+  }
+  return studentsGroupMemberships;
 }
 
 async function getStaff(): Promise<string[]> {
@@ -1234,8 +1298,22 @@ function slugify(string: string): string {
 function sum(numbers: number[]): number {
   return numbers.reduce((a, b) => a + b, 0);
 }
+
 function average(numbers: number[]): number {
   return sum(numbers) / numbers.length;
+}
+
+function tabularize(headings: string[], entries: any[][]): string {
+  for (const entry of entries)
+    if (entry.length !== headings.length) {
+      console.error(
+        `Mismatch on number of entries in table with headings: ${headings}`
+      );
+      process.exit(1);
+    }
+  return `|${headings.join("|")}|
+${"|-".repeat(headings.length)}|
+${entries.map(entry => `|${entry.join("|")}|`).join("\n")}`;
 }
 
 program
