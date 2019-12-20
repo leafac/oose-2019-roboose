@@ -577,11 +577,13 @@ program
     const gradesPath = `grades/groups/iterations/${iteration}`;
     for (const node of await listStaffDirectory(gradesPath)) {
       const github = node.slice(0, node.length - ".md".length);
+      const grade = await getStaffFile(`${gradesPath}/${node}`);
+      extractTotal(grade);
       await octokit.issues.create({
         owner: "jhu-oose",
         repo: `${process.env.COURSE}-group-${github}`,
         title: `Grade for Iteration ${iteration}`,
-        body: `${await getStaffFile(`${gradesPath}/${node}`)}
+        body: `${grade}
 
 ---
 
@@ -624,15 +626,6 @@ program
     const registrations = await getTable(Number(process.env.ISSUE_STUDENTS));
     const assignments = await listStaffDirectory("grades/students/assignments");
     const iterations = await listStaffDirectory("grades/groups/iterations");
-    function extractTotal(grade: string): number {
-      const gradeMatch = grade.match(/^\*\*Total:\*\* (\d+)\/100$/m);
-      if (gradeMatch === null) {
-        console.error(`Failed to extract total from:\n\n${grade}`);
-        process.exit(1);
-        throw null;
-      }
-      return Math.max(0, Number(gradeMatch[1]));
-    }
     function sum(numbers: number[]): number {
       return numbers.reduce((a, b) => a + b, 0);
     }
@@ -1196,6 +1189,16 @@ function footer(mention: string): string {
 
 /cc @${mention}
 `;
+}
+
+function extractTotal(grade: string): number {
+  const gradeMatch = grade.match(/^\*\*Total:\*\* (\d+)\/100$/m);
+  if (gradeMatch === null) {
+    console.error(`Failed to extract total from:\n\n${grade}`);
+    process.exit(1);
+    throw null;
+  }
+  return Math.max(0, Number(gradeMatch[1]));
 }
 
 function render(template: string, scope: object = {}): string {
