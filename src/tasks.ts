@@ -613,6 +613,7 @@ program
   .action(async () => {
     const {
       allowedLateDays,
+      lateDaysPenalty,
       ignoredAssignments,
       pointAdjustments,
       breakdown,
@@ -669,9 +670,12 @@ program
     for (const [github, grade] of studentsGrades) {
       grade.lateDaysTotal = sum([...grade.lateDays.values()]);
       grade.lateDaysPenalty =
-        -2 * Math.max(0, grade.lateDaysTotal - allowedLateDays);
+        lateDaysPenalty * Math.max(0, grade.lateDaysTotal - allowedLateDays);
       grade.assignmentsAverage = average([...grade.assignments.values()]);
-      grade.assignmentsTotal = grade.assignmentsAverage + grade.lateDaysPenalty;
+      grade.assignmentsTotal = Math.max(
+        0,
+        grade.assignmentsAverage + grade.lateDaysPenalty
+      );
     }
     const quizGrades = await computeGrades(`grades/students/quiz`);
     for (const [github, grade] of studentsGrades)
@@ -700,7 +704,7 @@ program
           pointAdjustments[student] === undefined
             ? 0
             : pointAdjustments[student].points;
-        grade.projectTotal = grade.project + grade.pointAdjustment;
+        grade.projectTotal = Math.max(0, grade.project + grade.pointAdjustment);
       }
     }
     for (const [github, grade] of studentsGrades) {
