@@ -666,6 +666,13 @@ program
         );
       }
     }
+    for (const [github, grade] of studentsGrades) {
+      grade.lateDaysTotal = sum([...grade.lateDays.values()]);
+      grade.lateDaysPenalty =
+        -2 * Math.max(0, grade.lateDaysTotal - allowedLateDays);
+      grade.assignmentsAverage = average([...grade.assignments.values()]);
+      grade.assignmentsTotal = grade.assignmentsAverage + grade.lateDaysPenalty;
+    }
     const quizGrades = await computeGrades(`grades/students/quiz`);
     for (const [github, grade] of studentsGrades)
       grade.quiz = extractTotal(quizGrades.get(github)!);
@@ -693,15 +700,10 @@ program
           pointAdjustments[student] === undefined
             ? 0
             : pointAdjustments[student].points;
+        grade.projectTotal = grade.project + grade.pointAdjustment;
       }
     }
     for (const [github, grade] of studentsGrades) {
-      grade.lateDaysTotal = sum([...grade.lateDays.values()]);
-      grade.lateDaysPenalty =
-        -2 * Math.max(0, grade.lateDaysTotal - allowedLateDays);
-      grade.assignmentsAverage = average([...grade.assignments.values()]);
-      grade.assignmentsTotal = grade.assignmentsAverage + grade.lateDaysPenalty;
-      grade.projectTotal = grade.project + grade.pointAdjustment;
       grade.total =
         breakdown.assignments * grade.assignmentsTotal +
         breakdown.quiz * grade.quiz +
