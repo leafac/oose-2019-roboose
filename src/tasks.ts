@@ -130,6 +130,14 @@ program
     const { hopkinses } = await getConfiguration();
     const registrations = await getTable(Number(process.env.ISSUE_STUDENTS));
     for (const { github, hopkins } of registrations) {
+      if (
+        registrations.some(
+          ({ otherGithub, otherHopkins }) =>
+            github === otherGithub && hopkins !== otherHopkins
+        )
+      ) {
+        console.log(`Ambiguous Hopkinses for ${github}.`);
+      }
       await checkFile("assignments/0.md", "student", [github]);
       if (!hopkinses.includes(hopkins)) {
         try {
@@ -278,7 +286,7 @@ program
     "list the assignment submissions of a given student; this is useful for investigating problems in submission before running the assignments:submissions:create command"
   )
   .action(async github => {
-    const submissions = (await getAssignmentSubmissions()).filter(
+    const submissions = (await getAssignmentsSubmissions()).filter(
       submission => submission.github === github
     );
     for (const submission of submissions) {
@@ -292,7 +300,7 @@ program
     "start the assignment grading process; this looks at the assignment template that students should have filled in to figure out the parts of the assignment; it also looks at the list of submissions in the database; it then creates one file per assignment part for the graders; it also creates a milestone with one issue per assignment part to track the progress"
   )
   .action(async assignment => {
-    const submissions = (await getAssignmentSubmissions()).filter(
+    const submissions = (await getAssignmentsSubmissions()).filter(
       submission => submission.assignment === assignment
     );
     await startStudentsGrade(
@@ -596,6 +604,133 @@ ${footer(`jhu-oose/${process.env.COURSE}-group-${slugify(github)}`)}
   });
 
 program
+  .command("final-grades")
+  .description(
+    "compute the final grades taking in account individual assignments, the quiz, group project iterations, and individual point adjustments (either for extra credit or because of outstanding good or bad performance on the group project)"
+  )
+  .action(async () => {
+    const studentsGrades = new Map<GitHub, any>();
+    const groupsGrades = new Map<GitHub, any>();
+    const {
+      allowedLateDays,
+      ignoredAssignments,
+      pointAdjustments,
+      breakdown,
+      cutoffs
+    } = await getConfiguration();
+    const students = await getStudents();
+    const groups = await getGroups();
+    const studentsGroupMemberships = await getstudentsGroupMemberships();
+    const registrations = await getTable(Number(process.env.ISSUE_STUDENTS));
+    const assignments = await listStaffDirectory("grades/students/assignments");
+    const iterations = await listStaffDirectory("grades/groups/iterations");
+    function extractTotal(grade: string): number {
+      const gradeMatch = grade.match(/^\*\*Total:\*\* (\d+)\/100$/m);
+      if (gradeMatch === null) {
+        console.error(`Failed to extract total from:\n\n${grade}`);
+        process.exit(1);
+        throw null;
+      }
+      return Math.max(0, Number(gradeMatch[1]));
+    }
+    function sum(numbers: number[]): number {
+      return numbers.reduce((a, b) => a + b, 0);
+    }
+    function average(numbers: number[]): number {
+      return sum(numbers) / numbers.length;
+    }
+    for (const student of students)
+      studentsGrades.set(student, {
+        hopkins: registrations.find(({ github }) => github === student).hopkins,
+        assignments: new Map<string, number>()
+      });
+    for (const assignment of assignments) {
+      const assignmentGrades = await computeGrades(
+        `grades/students/assignments/${assignment}`
+      );
+      for (const [github, { assignments }] of studentsGrades) {
+        if (
+          ignoredAssignments[github] !== undefined &&
+          ignoredAssignments[github].assignments.includes(assignment)
+        )
+          continue;
+        assignments.set(
+          assignment,
+          !assignmentGrades.has(github)
+            ? 0
+            : extractTotal(assignmentGrades.get(github)!)
+        );
+      }
+    }
+    const assignmentsSubmissions = await getAssignmentsSubmissions();
+    const quizGrades = await computeGrades(`grades/students/quiz`);
+    for (const group of groups) {
+      const iterationsGrades = new Map<string, number>();
+      for (const iteration of iterations)
+        iterationsGrades.set(
+          iteration,
+          extractTotal(
+            await getStaffFile(
+              `grades/groups/iterations/${iteration}/${group}.md`
+            )
+          )
+        );
+      groupsGrades.set(group, {
+        iterations: iterationsGrades,
+        iterationsTotal: average(
+          [...iterationsGrades.values()].slice(0, iterationsGrades.size - 1)
+        ),
+        project: iterationsGrades.get(iterations[iterations.length - 1])
+      });
+    }
+    for (const [github, grade] of studentsGrades) {
+      grade.lateDays = new Map<string, number>();
+      for (const {
+        github: submissionGithub,
+        assignment,
+        lateDays
+      } of assignmentsSubmissions) {
+        if (submissionGithub !== github) continue;
+        grade.lateDays.set(assignment, lateDays);
+      }
+      grade.lateDaysTotal = sum([...grade.lateDays.values()]);
+      grade.lateDaysPenalty =
+        -2 * Math.max(0, grade.lateDaysTotal - allowedLateDays);
+      grade.assignmentsAverage = average([...grade.assignments.values()]);
+      grade.assignmentsTotal = grade.assignmentsAverage + grade.lateDaysPenalty;
+      grade.quiz = extractTotal(quizGrades.get(github)!);
+      grade.pointAdjustments =
+        pointAdjustments[github] === undefined
+          ? 0
+          : pointAdjustments[github].points;
+      const studentGroupGrades = groupsGrades.get(
+        studentsGroupMemberships.get(github)!
+      )!;
+      grade.iterations = studentGroupGrades.iterations;
+      grade.iterationsTotal = studentGroupGrades.iterationsTotal;
+      grade.project = studentGroupGrades.project;
+      grade.projectTotal = grade.project + grade.pointAdjustments;
+      grade.total =
+        breakdown.assignments * grade.assignmentsTotal +
+        breakdown.quiz * grade.quiz +
+        breakdown.iterations * grade.iterationsTotal +
+        breakdown.project * grade.projectTotal;
+      for (const [letter, points] of Object.entries(cutoffs)) {
+        if (grade.total >= (points as number)) {
+          grade.grade = letter;
+          break;
+        }
+      }
+    }
+    /*
+    Output
+      Students
+      Groups
+      Count cutoffs
+    */
+  });
+
+program
   .command("one-off")
   .description(
     "this doesn’t do anything by default; it exists so that you can quickly write a script to run once; don’t commit changes to this command"
@@ -646,6 +781,24 @@ async function getGroups(): Promise<string[]> {
     .map(team => team.name.slice(`${process.env.COURSE}-group-`.length));
 }
 
+async function getstudentsGroupMemberships(): Promise<Map<string, string>> {
+  const studentsGroupMemberships = new Map<string, string>();
+  for (const group of await getGroups()) {
+    const members = await octokit.paginate(
+      octokit.teams.listMembers.endpoint.merge({
+        team_id: (await octokit.teams.getByName({
+          org: "jhu-oose",
+          team_slug: `${process.env.COURSE}-group-${group}`
+        })).data.id
+      })
+    );
+    for (const { login: student } of members) {
+      studentsGroupMemberships.set(student, group);
+    }
+  }
+  return studentsGroupMemberships;
+}
+
 async function getStaff(): Promise<string[]> {
   return (await octokit.paginate(
     octokit.teams.listMembers.endpoint.merge({
@@ -686,7 +839,7 @@ async function getTable(issueNumber: number): Promise<any[]> {
   )).map(response => deserialize(response.body));
 }
 
-async function getAssignmentSubmissions(): Promise<any[]> {
+async function getAssignmentsSubmissions(): Promise<any[]> {
   const { assignmentsDueTimes } = await getConfiguration();
   const allSubmissions = await getTable(Number(process.env.ISSUE_ASSIGNMENTS));
   const latestSubmissions = allSubmissions.filter(
