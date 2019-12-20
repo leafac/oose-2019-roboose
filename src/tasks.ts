@@ -724,67 +724,53 @@ program
       );
     console.log(`# Students
 
-${tabularize(
-  [
-    "GitHub",
-    "Hopkins",
-    ...assignments.map(assignment => `Assignment ${assignment}`),
-    "Assignments Average",
-    ...assignments.map(assignment => `Late Days for Assignment ${assignment}`),
-    "Late Days Total",
-    "Late Days Penalty",
-    "Assignments Total",
-    "Quiz",
-    "Group",
-    ...iterations.map(iteration => `Iteration ${iteration}`),
-    "Iterations Total",
-    "Project",
-    "Point Adjustment",
-    "Project Total",
-    "Total",
-    "Grade"
-  ],
-  [...studentsGrades.values()].map(grade => [
-    grade.github,
-    grade.hopkins,
-    ...[assignments.map(assignment => grade.assignments[assignment] || "—")],
-    grade.assignmentsAverage,
-    ...[assignments.map(assignment => grade.lateDays[assignment] || "—")],
-    grade.lateDaysTotal,
-    grade.lateDaysPenalty,
-    grade.assignmentsTotal,
-    grade.quiz,
-    grade.group,
-    ...grade.iterations,
-    grade.iterationsTotal,
-    grade.project,
-    grade.pointAdjustment,
-    grade.projectTotal,
-    grade.total,
-    grade.grade
-  ])
-)}
+${tabularize([...studentsGrades.values()], [
+  ["GitHub", (grade: any) => grade.github],
+  ["Hopkins", (grade: any) => grade.hopkins],
+  ...assignments.map(assignment => [
+    `Assignment ${assignment}`,
+    (grade: any) => grade.assignments.get(assignment) || "—"
+  ]),
+  ["Assignments Average", (grade: any) => grade.assignmentsAverage],
+  ...assignments.map(assignment => [
+    `Late Days for Assignment ${assignment}`,
+    (grade: any) => grade.lateDays.get(assignment) || "—"
+  ]),
+  ["Late Days Total", (grade: any) => grade.lateDaysTotal],
+  ["Late Days Penalty", (grade: any) => grade.lateDaysPenalty],
+  ["Assignments Total", (grade: any) => grade.assignmentsTotal],
+  ["Quiz", (grade: any) => grade.quiz],
+  ["Group", (grade: any) => grade.group],
+  ...iterations.map(iteration => [
+    `Iteration ${iteration}`,
+    (grade: any) => grade.iterations.get(iteration)
+  ]),
+  ["Iterations Total", (grade: any) => grade.iterationsTotal],
+  ["Project", (grade: any) => grade.project],
+  ["Point Adjustment", (grade: any) => grade.pointAdjustment],
+  ["Project Total", (grade: any) => grade.projectTotal],
+  ["Total", (grade: any) => grade.total],
+  ["Grade", (grade: any) => grade.grade]
+] as any)}
 
 # Groups
 
-${tabularize(
-  [
-    "Group",
-    ...iterations.map(iteration => `Iteration ${iteration}`),
-    "Iterations Total",
-    "Project"
-  ],
-  [...groupsGrades.values()].map(grade => [
-    grade.group,
-    ...grade.grades,
-    grade.total,
-    grade.project
-  ])
-)}
+${tabularize([...groupsGrades.values()], [
+  ["Group", (grade: any) => grade.group],
+  ...iterations.map(iteration => [
+    `Iteration ${iteration}`,
+    (grade: any) => grade.grades.get(iteration)
+  ]),
+  ["Iterations Total", (grade: any) => grade.total],
+  ["Project", (grade: any) => grade.project]
+] as any)}
 
 # Counts
 
-${tabularize(["Grade", "Count"], [...gradesCounts.entries()])}
+${tabularize(
+  [...gradesCounts.entries()],
+  [["Grade", ([grade, count]) => grade], ["Count", ([grade, count]) => count]]
+)}
 `);
   });
 
@@ -1305,17 +1291,17 @@ function average(numbers: number[]): number {
   return sum(numbers) / numbers.length;
 }
 
-function tabularize(headings: string[], entries: any[][]): string {
-  for (const entry of entries)
-    if (entry.length !== headings.length) {
-      console.error(
-        `Mismatch on number of entries in table with headings: ${headings}`
-      );
-      process.exit(1);
-    }
-  return `|${headings.join("|")}|
-${"|-".repeat(headings.length)}|
-${entries.map(entry => `|${entry.join("|")}|`).join("\n")}`;
+function tabularize(
+  entries: any[],
+  fields: [string, (entry: any) => any][]
+): string {
+  return `|${fields.map(([title, producer]) => title).join("|")}|
+${"|-".repeat(fields.length)}|
+${entries
+  .map(
+    entry => `|${fields.map(([title, producer]) => producer(entry)).join("|")}|`
+  )
+  .join("\n")}`;
 }
 
 program
