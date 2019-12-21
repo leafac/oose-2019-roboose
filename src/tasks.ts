@@ -128,27 +128,56 @@ program
   )
   .action(async () => {
     const { hopkinses } = await getConfiguration();
+    const students = await getStudents();
     const registrations = await getTable(Number(process.env.ISSUE_STUDENTS));
+    if (hopkinses.length !== students.length)
+      console.error(
+        `Number of Hopkinses (${hopkinses.length}) doesn’t match the number of registered students (${students.length}).`
+      );
+    for (const github of students) {
+      const registration = registrations.find(
+        ({ github: registrationGithub }) => github === registrationGithub
+      );
+      if (registration === undefined) {
+        console.error(`Can’t find registration for student ${github}.`);
+        continue;
+      }
+      if (!hopkinses.includes(registration.hopkins))
+        console.error(
+          `Student doesn’t appear registered in SIS. GitHub: ${github}. Hopkins: ${registration.hopkins}.`
+        );
+    }
+    for (const hopkins of hopkinses) {
+      const registration = registrations.find(
+        ({ hopkins: registrationHopkins }) => hopkins === registrationHopkins
+      );
+      if (registration === undefined) {
+        console.error(`Can’t find registration for Hopkins ${hopkins}.`);
+        continue;
+      }
+      if (!students.includes(registration.github))
+        console.error(
+          `Student is in SIS but not on GitHub. GitHub: ${registration.github}. Hopkins: ${hopkins}.`
+        );
+    }
     for (const { github, hopkins } of registrations) {
       if (
         registrations.some(
           ({ otherGithub, otherHopkins }) =>
             github === otherGithub && hopkins !== otherHopkins
         )
-      ) {
-        console.log(`Ambiguous Hopkinses for ${github}.`);
-      }
-      await checkFile("assignments/0.md", "student", [github]);
-      if (!hopkinses.includes(hopkins)) {
-        try {
-          await octokit.repos.get({
-            owner: "jhu-oose",
-            repo: `${process.env.COURSE}-student-${github}`
-          });
-          console.log(
-            `Student doesn’t appear registered in SIS. GitHub: ${github}. Hopkins: ${hopkins}.`
-          );
-        } catch {}
+      )
+        console.error(`Ambiguous Hopkinses for ${github}.`);
+      try {
+        await octokit.repos.getContents({
+          owner: "jhu-oose",
+          repo: `${process.env.COURSE}-student-${github}`,
+          path: "assignments/0.md"
+        });
+      } catch (error) {
+        console.error(
+          `Either there was an error with the registration process for ${github} or you forgot to remove their registration from the database when deleting them from the course.`
+        );
       }
     }
   });
