@@ -813,6 +813,13 @@ ${tabularize(
   [...gradesCounts.entries()],
   [["Grade", ([grade, count]) => grade], ["Count", ([grade, count]) => count]]
 )}
+
+# SIS
+
+${tabularize([...studentsGrades.values()], [
+  ["ID", (grade: any) => grade.hopkins],
+  ["Grade", (grade: any) => grade.grade]
+] as any)}
 `);
   });
 
