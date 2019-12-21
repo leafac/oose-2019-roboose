@@ -668,8 +668,12 @@ program
         lateDays: new Map<string, number>()
       });
     for (const assignment of assignments) {
-      const grades = await computeGrades(
-        `grades/students/assignments/${assignment}`
+      const grades = new Map(
+        [
+          ...(await computeGrades(
+            `grades/students/assignments/${assignment}`
+          )).entries()
+        ].map(([github, grade]) => [slugify(github), grade])
       );
       for (const [github, grade] of studentsGrades) {
         if (
@@ -677,20 +681,21 @@ program
           ignoredAssignments[github].assignments.includes(assignment)
         )
           continue;
+        const githubSlug = slugify(github);
         grade.assignments.set(
           assignment,
-          !grades.has(github) ? 0 : extractTotal(grades.get(github)!)
+          !grades.has(githubSlug) ? 0 : extractTotal(grades.get(githubSlug)!)
         );
         grade.lateDays.set(
           assignment,
-          !grades.has(github)
+          !grades.has(githubSlug)
             ? 0
             : assignmentsSubmissions.find(
                 ({
                   github: submissionGithub,
                   assignment: submissionAssignment
                 }) =>
-                  submissionGithub === github &&
+                  slugify(submissionGithub) === githubSlug &&
                   submissionAssignment === assignment
               ).lateDays
         );
