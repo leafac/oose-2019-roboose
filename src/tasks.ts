@@ -48,14 +48,6 @@ program
 
     await octokit.repos.createInOrg({
       org: "jhu-oose",
-      name: "instructors",
-      description: "Documentation and credentials",
-      private: true,
-      has_projects: false,
-      has_wiki: false
-    });
-    await octokit.repos.createInOrg({
-      org: "jhu-oose",
       name: `${process.env.COURSE}-staff`,
       description: "Staff forum, grading, and pedagogical material",
       private: true,
@@ -821,6 +813,28 @@ ${tabularize([...studentsGrades.values()], [
   ["Grade", (grade: any) => grade.grade]
 ] as any)}
 `);
+  });
+
+program
+  .command("archive")
+  .description("archive the repositories for the year")
+  .action(async () => {
+    const repositories = [
+      `${process.env.COURSE}-staff`,
+      `${process.env.COURSE}-students`,
+      ...(await getStudents()).map(
+        github => `${process.env.COURSE}-student-${github}`
+      ),
+      ...(await getGroups()).map(
+        github => `${process.env.COURSE}-group-${github}`
+      )
+    ];
+    for (const repo of repositories)
+      await octokit.repos.update({
+        owner: "jhu-oose",
+        repo,
+        archived: true
+      });
   });
 
 program
