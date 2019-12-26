@@ -122,10 +122,6 @@ program
     const { hopkinses } = await getConfiguration();
     const students = await getStudents();
     const registrations = await getTable(Number(process.env.ISSUE_STUDENTS));
-    if (hopkinses.length !== students.length)
-      console.error(
-        `Number of Hopkinses (${hopkinses.length}) doesn’t match the number of registered students (${students.length}).`
-      );
     for (const github of students) {
       const registration = registrations.find(
         ({ github: registrationGithub }) => github === registrationGithub
@@ -377,7 +373,7 @@ program
 program
   .command("quiz:grades:start")
   .description(
-    "start the quiz grading process; this looks a lot like the assignments:grades:start command, except that the submissions aren’t the database, they’re just whatever is on their repository at the moment, because we assume you’re running this right after the quiz:submissions:upload command"
+    "start the quiz grading process; this looks a lot like the assignments:grades:start command, except that the submissions aren’t in the database, they’re just whatever is on their repository at the moment, because we assume you’re running this right after the quiz:submissions:upload command"
   )
   .action(async () => {
     const submissions = new Array<{ github: string; commit: string }>();
@@ -413,7 +409,7 @@ program
 program
   .command("feedbacks:read")
   .description(
-    "compile the feedback collected in the form for assignment submission"
+    "compile the feedback collected in the forms for assignment submission"
   )
   .action(async () => {
     const feedbacks = await getTable(Number(process.env.ISSUE_FEEDBACKS));
@@ -486,7 +482,7 @@ program
 program
   .command("groups:files:upload <source> <destination>")
   .description(
-    "upload a file to the groups repositories; this is similar to the students:files:upload command"
+    "upload a file to the groups repositories; this is similar to the students:files:upload command, but for groups"
   )
   .action(async (source, destination) => {
     await uploadFile(source, destination, "group", await getGroups());
@@ -495,7 +491,7 @@ program
 program
   .command("groups:files:check <path>")
   .description(
-    "check that a certain file exists in the repositories of every group; this is similar to the students:files:check command"
+    "check that a certain file exists in the repositories of every group; this is similar to the students:files:check command, but for groups"
   )
   .action(async path => {
     await checkFile(path, "group", await getGroups());
@@ -504,7 +500,7 @@ program
 program
   .command("groups:files:delete <path>")
   .description(
-    "delete a file from groups repositories; this is similar to the students:files:delete command"
+    "delete a file from groups repositories; this is similar to the students:files:delete command, but for groups"
   )
   .action(async path => {
     await deleteFile(path, "group", await getGroups());
@@ -817,7 +813,7 @@ ${tabularize([...studentsGrades.values()], [
 
 program
   .command("archive")
-  .description("archive the repositories for the year")
+  .description("archive the repositories for the year; run this when the semester is over")
   .action(async () => {
     const repositories = [
       `${process.env.COURSE}-staff`,
