@@ -7,6 +7,7 @@ import dotenv from "dotenv";
 import inquirer from "inquirer";
 import open from "open";
 import fs from "fs";
+import { execSync } from "child_process";
 
 const program = new Command();
 
@@ -122,6 +123,26 @@ program
     const { hopkinses } = await getConfiguration();
     const students = await getStudents();
     const registrations = await getTable(Number(process.env.ISSUE_STUDENTS));
+    for (const { github, hopkins } of registrations) {
+      if (
+        registrations.some(
+          ({ otherGithub, otherHopkins }) =>
+            github === otherGithub && hopkins !== otherHopkins
+        )
+      )
+        console.error(`Ambiguous Hopkinses for ${github}.`);
+      try {
+        await octokit.repos.getContents({
+          owner: "jhu-oose",
+          repo: `${process.env.COURSE}-student-${github}`,
+          path: "assignments/0.md"
+        });
+      } catch (error) {
+        console.error(
+          `Either there was an error with the registration process for ${github} or you forgot to remove their registration from the database when deleting them from the course.`
+        );
+      }
+    }
     for (const github of students) {
       const registration = registrations.find(
         ({ github: registrationGithub }) => github === registrationGithub
@@ -148,26 +169,6 @@ program
           `Student is in SIS but not on GitHub. GitHub: ${registration.github}. Hopkins: ${hopkins}.`
         );
     }
-    for (const { github, hopkins } of registrations) {
-      if (
-        registrations.some(
-          ({ otherGithub, otherHopkins }) =>
-            github === otherGithub && hopkins !== otherHopkins
-        )
-      )
-        console.error(`Ambiguous Hopkinses for ${github}.`);
-      try {
-        await octokit.repos.getContents({
-          owner: "jhu-oose",
-          repo: `${process.env.COURSE}-student-${github}`,
-          path: "assignments/0.md"
-        });
-      } catch (error) {
-        console.error(
-          `Either there was an error with the registration process for ${github} or you forgot to remove their registration from the database when deleting them from the course.`
-        );
-      }
-    }
   });
 
 program
@@ -178,9 +179,9 @@ program
       await open(
         `https://github.com/jhu-oose/${process.env.COURSE}-student-${github}`
       );
-      await inquirer.prompt([
-        { name: "Press ENTER to open next student’s profile" }
-      ]);
+      await inquirer.prompt({
+        name: "Press ENTER to open next student’s profile"
+      });
     }
   });
 
@@ -189,14 +190,12 @@ program
   .description("delete a student from the course")
   .action(async github => {
     if (
-      !(await inquirer.prompt([
-        {
-          name: "confirm",
-          message: `You’re about to delete student ${github} from the course. THIS ACTION CAN’T BE REVERSED. Are you sure you want to continue?`,
-          type: "confirm",
-          default: false
-        }
-      ])).confirm
+      !(await inquirer.prompt({
+        name: "confirm",
+        message: `You’re about to delete student ${github} from the course. THIS ACTION CAN’T BE REVERSED. Are you sure you want to continue?`,
+        type: "confirm",
+        default: false
+      })).confirm
     )
       process.exit(0);
     console.log(
@@ -303,10 +302,8 @@ program
     "list the assignment submissions of a given student; this is useful for investigating problems in submission before running the assignments:submissions:create command"
   )
   .action(async github => {
-    const submissions = (await getAssignmentsSubmissions()).filter(
-      submission => submission.github === github
-    );
-    for (const submission of submissions) {
+    for (const submission of await getAssignmentsSubmissions()) {
+      if (submission.github !== github) continue;
       console.log(serialize(submission));
     }
   });
@@ -343,13 +340,109 @@ program
   });
 
 program
-  .command("quiz:submissions:upload <path-to-scanned-pdfs>")
+  .command("quiz:submissions:merge <path-to-scanned-pdfs> <path-to-merged-pdf>")
+  .description(
+    "merge the PDFs with scanned quizzes into a single PDF while removing the cover pages that identify the batch number; this command depends on pdfjam, which comes installed with most TeX distributions"
+  )
+  .action(async (pathToScannedPdfs, pathToMergedPdf) => {
+    execSync(
+      `pdfjam ${pathToScannedPdfs}/*.pdf 3- --outfile ${pathToMergedPdf}`
+    );
+  });
+
+program
+  .command(
+    "quiz:submissions:split <path-to-merged-pdf> <number-of-pages-in-merged-pdf> <number-of-pages-per-quiz> <path-to-split-pdfs>"
+  )
+  .description(
+    "split the merged PDF with the scanned quizzes into one PDF per quiz; this command depends on pdfjam, which comes installed with most TeX distributions"
+  )
+  .action(
+    async (
+      pathToMergedPdf,
+      numberOfPagesInMergedPdf,
+      numberOfPagesPerQuiz,
+      pathToSplitPdfs
+    ) => {
+      if (numberOfPagesInMergedPdf % numberOfPagesPerQuiz !== 0) {
+        console.error(
+          `The number of pages in merged PDF (${numberOfPagesInMergedPdf}) isn’t divisible by the number of pages per quiz (${numberOfPagesPerQuiz}).`
+        );
+        process.exit(1);
+      }
+      if (fs.existsSync(pathToSplitPdfs)) {
+        console.error(
+          `Path to split PDFs (${pathToSplitPdfs}) already exists.`
+        );
+        process.exit(1);
+      }
+      fs.mkdirSync(pathToSplitPdfs);
+      for (
+        let index = 0;
+        index < numberOfPagesInMergedPdf / numberOfPagesPerQuiz;
+        index++
+      ) {
+        execSync(
+          `pdfjam ${pathToMergedPdf} ${index * numberOfPagesPerQuiz +
+            1}-${(index + 1) *
+            numberOfPagesPerQuiz} --outfile ${pathToSplitPdfs}/${index}.pdf`
+        );
+      }
+    }
+  );
+
+program
+  .command(
+    "quiz:submissions:rename <path-to-split-pdfs> <path-to-renamed-pdfs>"
+  )
+  .description("rename the split PDFs to correspond to students names")
+  .action(async (pathToSplitPdfs, pathToRenamedPdfs) => {
+    const pdfs = fs
+      .readdirSync(pathToSplitPdfs)
+      .filter(file => file.endsWith(".pdf"));
+    const students = await getStudents();
+    if (pdfs.length > students.length) {
+      console.error(
+        `There are more PDFs (${pdfs.length}) than students (${students.length}).`
+      );
+      process.exit(1);
+    }
+    if (pdfs.length < students.length)
+      console.error(
+        `There are fewer PDFs (${pdfs.length}) than students (${students.length}).`
+      );
+    if (fs.existsSync(pathToRenamedPdfs)) {
+      console.error(
+        `Path to renamed PDFs (${pathToRenamedPdfs}) already exists.`
+      );
+      process.exit(1);
+    }
+    fs.mkdirSync(pathToRenamedPdfs);
+    const availableStudents = new Set(students);
+    for (const pdf of pdfs) {
+      execSync(`open ${pathToSplitPdfs}/${pdf}`);
+      const github = (await inquirer.prompt({
+        type: "list",
+        name: "github",
+        message: `Rename ${pdf} to`,
+        choices: [...availableStudents].sort()
+      })).github;
+      availableStudents.delete(github);
+      fs.copyFileSync(
+        `${pathToSplitPdfs}/${pdf}`,
+        `${pathToRenamedPdfs}/${github}.pdf`
+      );
+    }
+  });
+
+program
+  .command("quiz:submissions:upload <path-to-renamed-pdfs>")
   .description(
     "upload the PDFs with the quiz to the students repositories; the name of each PDF must be the corresponding student’s GitHub identifier"
   )
-  .action(async pathToScannedPdfs => {
+  .action(async pathToRenamedPdfs => {
     const pdfs = fs
-      .readdirSync(pathToScannedPdfs)
+      .readdirSync(pathToRenamedPdfs)
       .filter(file => file.endsWith(".pdf"));
     for (const pdf of pdfs) {
       const github = pdf.slice(0, pdf.length - ".pdf".length);
@@ -361,7 +454,7 @@ program
           path: "quiz.pdf",
           message: "Add quiz.pdf",
           content: fs
-            .readFileSync(`${pathToScannedPdfs}/${pdf}`)
+            .readFileSync(`${pathToRenamedPdfs}/${pdf}`)
             .toString("base64")
         });
       } catch (error) {
@@ -450,14 +543,12 @@ program
   .description("delete a group from the course")
   .action(async github => {
     if (
-      !(await inquirer.prompt([
-        {
-          name: "confirm",
-          message: `You’re about to delete group ${github} from the course. THIS ACTION CAN’T BE REVERSED. Are you sure you want to continue?`,
-          type: "confirm",
-          default: false
-        }
-      ])).confirm
+      !(await inquirer.prompt({
+        name: "confirm",
+        message: `You’re about to delete group ${github} from the course. THIS ACTION CAN’T BE REVERSED. Are you sure you want to continue?`,
+        type: "confirm",
+        default: false
+      })).confirm
     )
       process.exit(0);
     console.log(
@@ -813,7 +904,9 @@ ${tabularize([...studentsGrades.values()], [
 
 program
   .command("archive")
-  .description("archive the repositories for the year; run this when the semester is over")
+  .description(
+    "archive the repositories for the year; run this when the semester is over"
+  )
   .action(async () => {
     const repositories = [
       `${process.env.COURSE}-staff`,
