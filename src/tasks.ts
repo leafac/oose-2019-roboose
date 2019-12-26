@@ -945,7 +945,7 @@ program
         breakdown.iterations * grade.iterationsTotal +
         breakdown.project * grade.projectTotal;
       for (const [letter, points] of Object.entries(cutoffs)) {
-        if (grade.total >= (points as number)) {
+        if (grade.total >= Number(points)) {
           grade.grade = letter;
           break;
         }
