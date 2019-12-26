@@ -500,42 +500,160 @@ program
   });
 
 program
-  .command("feedbacks:read")
+  .command("feedbacks:compile")
   .description(
     "compile the feedback collected in the forms for assignment submission"
   )
   .action(async () => {
-    const feedbacks = await getTable(Number(process.env.ISSUE_FEEDBACKS));
-    for (const feedback of feedbacks) {
-      console.log(`**Assignment:** ${feedback.assignment}
+    const feedbacks = await getFeedbacks();
+    console.log(`# Feedback
 
-**Lecture Liked:** ${feedback.feedback.lecture.liked}
+# Lectures
 
-**Lecture Improved:** ${feedback.feedback.lecture.improved}
+${[...feedbacks.entries()]
+  .map(
+    ([lecture, feedbacks]) => `## Lecture ${lecture}
 
-**Assignment Liked:** ${feedback.feedback.assignment.liked}
+**Confidence**
 
-**Assignment Improved:** ${feedback.feedback.assignment.improved}
+${plot(feedbacks, feedback => feedback.lecture.confidence, {
+  decreased:
+    "The lecture **decreased** my confidence in the material that was covered.",
+  "no-effect":
+    "The lecture **didn’t affect** my confidence in the material that was covered.",
+  increased:
+    "The lecture **increased** my confidence in the material that was covered."
+})}
 
----
+**Relevance**
+
+${plot(feedbacks, feedback => feedback.lecture.relevance, {
+  irrelevant: "The lecture covered material that seemed **irrelevant**.",
+  "cant-tell":
+    "The lecture covered material that I **can’t tell** whether is relevant or not.",
+  relevant: "The lecture covered material that I can tell is **relevant**."
+})}
+
+**Difficulty**  
+
+${plot(feedbacks, feedback => feedback.lecture.difficulty, {
+  "too-difficult":
+    "The lecture was **too difficult** and I had trouble following.",
+  "right-level": "The lecture was **at the right level** of difficulty for me.",
+  "too-easy": "The lecture was **too easy** and I got bored."
+})}
+
+**Pace**  
+
+${plot(feedbacks, feedback => feedback.lecture.pace, {
+  "too-fast": "The lecture was **too fast** and I had trouble following.",
+  "right-pace": "The lecture was **at the right pace** for me.",
+  "too-slow": "The lecture was **too slow** and I got bored."
+})}
+
+<details>
+<summary><strong>More Details</strong></summary>
+${feedbacks
+  .map(
+    feedback => `<p><strong>At Least One Specific Thing That You Liked:</strong> ${feedback.lecture.liked}</p>
+
+<p><strong>At Least One Specific Thing That You Think Should Be Improved:</strong> ${feedback.lecture.improved}</p>
+
+<hr>
+`
+  )
+  .join("\n")}
+</details>
+`
+  )
+  .join("\n")}
+
+# Assignments
+
+${[...feedbacks.entries()]
+  .map(([assignment, feedbacks]) => {
+    const hours = feedbacks.map(feedback => Number(feedback.assignment.hours));
+    return `## Assignment ${assignment}
+
+**Approximate Number of Hours Spent**
+
+| | |
+|-|-|
+| Sum | ${sum(hours)} |
+| Mean | ${mean(hours)} |
+| Average | ${average(hours)} |
+| Standard Deviation | ${standardDeviation(hours)} |
+
+${plot(
+  hours,
+  hour => hour.toString(),
+  Object.fromEntries(
+    [...new Array(Math.max(...hours)).keys()].map(i => [
+      (i + 1).toString(),
+      (i + 1).toString()
+    ])
+  ),
+  80
+)}
+
+**Confidence**
+
+${plot(feedbacks, feedback => feedback.assignment.confidence, {
+  decreased:
+    "The assignment **decreased** my confidence in the material that was covered.",
+  "no-effect":
+    "The assignment **didn’t affect** my confidence in the material that was covered.",
+  increased:
+    "The assignment **increased** my confidence in the material that was covered."
+})}
+
+**Relevance**
+
+${plot(feedbacks, feedback => feedback.assignment.relevance, {
+  irrelevant:
+    "The assignment covered material that seemed **irrelevant** or **didn’t connect well** with the lecture.",
+  "cant-tell":
+    "The assignment covered material that I **can’t tell** whether is relevant or not or whether it connects with the lecture or not.",
+  relevant:
+    "The assignment covered material that I can tell is **relevant** and **connects well** with the lecture."
+})}
+
+**Difficulty**  
+
+${plot(feedbacks, feedback => feedback.assignment.difficulty, {
+  "too-difficult":
+    "The assignment was **too difficult** and I had trouble completing it.",
+  "right-level":
+    "The assignment was **at the right level** of difficulty for me.",
+  "too-easy": "The assignment was **too easy** and I got bored."
+})}
+
+**Load**  
+
+${plot(feedbacks, feedback => feedback.assignment.load, {
+  "too-much-work":
+    "The assignment was **too much work** and I had trouble completing it.",
+  "right-amount": "The assignment was **the right amount of work** for me.",
+  "too-little-work": "The assignment was **too little work** and I got bored."
+})}
+
+<details>
+<summary><strong>More Details</strong></summary>
+${feedbacks
+  .map(
+    feedback => `<p><strong>At Least One Specific Thing That You Liked:</strong> ${feedback.assignment.liked}</p>
+
+<p><strong>At Least One Specific Thing That You Think Should Be Improved:</strong> ${feedback.assignment.improved}</p>
+
+<hr>
+`
+  )
+  .join("\n")}
+</details>
+`;
+  })
+  .join("\n")}
 `);
-    }
-    for (const feedback of feedbacks) {
-      if (feedback.feedback.course !== undefined) {
-        console.log(`**Course Recommend:** ${feedback.feedback.course.recommend}
-
-**Course Liked:** ${feedback.feedback.course.liked}
-
-**Course Improved:** ${feedback.feedback.course.improved}
-
-**Staff Liked:** ${feedback.feedback.course.staff.liked}
-
-**Staff Comment:** ${feedback.feedback.course.staff["open-ended"]}
-
----
-`);
-      }
-    }
   });
 
 program
@@ -841,64 +959,72 @@ program
       );
     console.log(`# Students
 
-${tabularize([...studentsGrades.values()], [
-  ["GitHub", (grade: any) => grade.github],
-  ["Hopkins", (grade: any) => grade.hopkins],
-  ...assignments.map(assignment => [
-    `Assignment ${assignment}`,
-    (grade: any) =>
-      !grade.assignments.has(assignment)
-        ? "—"
-        : grade.assignments.get(assignment)
-  ]),
-  ["Assignments Average", (grade: any) => grade.assignmentsAverage],
-  ...assignments.map(assignment => [
-    `Late Days for Assignment ${assignment}`,
-    (grade: any) =>
-      !grade.lateDays.has(assignment) ? "—" : grade.lateDays.get(assignment)
-  ]),
-  ["Late Days Total", (grade: any) => grade.lateDaysTotal],
-  ["Late Days Penalty", (grade: any) => grade.lateDaysPenalty],
-  ["Assignments Total", (grade: any) => grade.assignmentsTotal],
-  ["Quiz", (grade: any) => grade.quiz],
-  ["Group", (grade: any) => grade.group],
-  ...iterations.map(iteration => [
-    `Iteration ${iteration}`,
-    (grade: any) => grade.iterations.get(iteration)
-  ]),
-  ["Iterations Total", (grade: any) => grade.iterationsTotal],
-  ["Project", (grade: any) => grade.project],
-  ["Point Adjustment", (grade: any) => grade.pointAdjustment],
-  ["Project Total", (grade: any) => grade.projectTotal],
-  ["Total", (grade: any) => grade.total],
-  ["Grade", (grade: any) => grade.grade]
-] as any)}
+${tabularize([...studentsGrades.values()], {
+  GitHub: grade => grade.github,
+  Hopkins: grade => grade.hopkins,
+  ...Object.fromEntries(
+    assignments.map(assignment => [
+      `Assignment ${assignment}`,
+      grade =>
+        !grade.assignments.has(assignment)
+          ? "—"
+          : grade.assignments.get(assignment)
+    ])
+  ),
+  "Assignments Average": grade => grade.assignmentsAverage,
+  ...Object.fromEntries(
+    assignments.map(assignment => [
+      `Late Days for Assignment ${assignment}`,
+      grade =>
+        !grade.lateDays.has(assignment) ? "—" : grade.lateDays.get(assignment)
+    ])
+  ),
+  "Late Days Total": grade => grade.lateDaysTotal,
+  "Late Days Penalty": grade => grade.lateDaysPenalty,
+  "Assignments Total": grade => grade.assignmentsTotal,
+  Quiz: grade => grade.quiz,
+  Group: grade => grade.group,
+  ...Object.fromEntries(
+    iterations.map(iteration => [
+      `Iteration ${iteration}`,
+      grade => grade.iterations.get(iteration)
+    ])
+  ),
+  "Iterations Total": grade => grade.iterationsTotal,
+  Project: grade => grade.project,
+  "Point Adjustment": grade => grade.pointAdjustment,
+  "Project Total": grade => grade.projectTotal,
+  Total: grade => grade.total,
+  Grade: grade => grade.grade
+})}
 
 # Groups
 
-${tabularize([...groupsGrades.values()], [
-  ["Group", (grade: any) => grade.group],
-  ...iterations.map(iteration => [
-    `Iteration ${iteration}`,
-    (grade: any) => grade.grades.get(iteration)
-  ]),
-  ["Iterations Total", (grade: any) => grade.total],
-  ["Project", (grade: any) => grade.project]
-] as any)}
+${tabularize([...groupsGrades.values()], {
+  Group: grade => grade.group,
+  ...Object.fromEntries(
+    iterations.map(iteration => [
+      `Iteration ${iteration}`,
+      grade => grade.grades.get(iteration)
+    ])
+  ),
+  "Iterations Total": grade => grade.total,
+  Project: grade => grade.project
+})}
 
 # Counts
 
-${tabularize(
-  [...gradesCounts.entries()],
-  [["Grade", ([grade, count]) => grade], ["Count", ([grade, count]) => count]]
-)}
+${tabularize([...gradesCounts.entries()], {
+  Grade: ([grade, count]) => grade,
+  Count: ([grade, count]) => count
+})}
 
 # SIS
 
-${tabularize([...studentsGrades.values()], [
-  ["ID", (grade: any) => grade.hopkins],
-  ["Grade", (grade: any) => grade.grade]
-] as any)}
+${tabularize([...studentsGrades.values()], {
+  ID: grade => grade.hopkins,
+  Grade: grade => grade.grade
+})}
 `);
   });
 
@@ -1063,6 +1189,17 @@ async function getAssignmentsSubmissions(): Promise<any[]> {
           };
         });
   return submissionsWithLateDays;
+}
+
+async function getFeedbacks(): Promise<Map<string, any[]>> {
+  const feedbacks = new Map<string, any[]>();
+  for (const { assignment, feedback } of await getTable(
+    Number(process.env.ISSUE_FEEDBACKS)
+  )) {
+    if (!feedbacks.has(assignment)) feedbacks.set(assignment, new Array<any>());
+    feedbacks.get(assignment)!.push(feedback);
+  }
+  return feedbacks;
 }
 
 type RepositoryKind = "student" | "group";
@@ -1439,20 +1576,57 @@ function sum(numbers: number[]): number {
   return numbers.reduce((a, b) => a + b, 0);
 }
 
+function mean(numbers: number[]): number {
+  return numbers.sort()[Math.floor(numbers.length / 2)];
+}
+
 function average(numbers: number[]): number {
   return sum(numbers) / numbers.length;
 }
 
+function standardDeviation(numbers: number[]): number {
+  const numbersAverage = average(numbers);
+  return Math.sqrt(
+    average(numbers.map(number => Math.pow(number - numbersAverage, 2)))
+  );
+}
+
 function tabularize(
   entries: any[],
-  fields: [string, (entry: any) => any][]
+  fields: { [title: string]: (entry: any) => any }
 ): string {
-  return `|${fields.map(([title, producer]) => title).join("|")}|
-${"|-".repeat(fields.length)}|
+  return `|${Object.entries(fields)
+    .map(([title, selector]) => title)
+    .join("|")}|
+${"|-".repeat(Object.entries(fields).length)}|
 ${entries
   .map(
-    entry => `|${fields.map(([title, producer]) => producer(entry)).join("|")}|`
+    entry =>
+      `|${Object.entries(fields)
+        .map(([title, selector]) => selector(entry))
+        .join("|")}|`
   )
+  .join("\n")}`;
+}
+
+function plot(
+  entries: any[],
+  selector: (entry: any) => string,
+  options: { [identifier: string]: string },
+  resolution: number = 30
+): string {
+  const totalEntries = entries.length;
+  return `| | |
+|-|-|
+${Object.entries(options)
+  .map(([identifier, description]) => {
+    const entriesForField = entries.filter(
+      entry => selector(entry) === identifier
+    ).length;
+    return `| ${description} | ${"█".repeat(
+      Math.ceil((entriesForField / totalEntries) * resolution)
+    )} <small>${entriesForField}/${totalEntries}</small> |`;
+  })
   .join("\n")}`;
 }
 
