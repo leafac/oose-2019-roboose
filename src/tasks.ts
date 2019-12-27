@@ -507,7 +507,21 @@ program
   .action(async () => {
     const { toolbox } = await getConfiguration();
     const feedbacks = await getFeedbacks();
-    console.log(`# Feedback
+    const path = "feedback.md";
+    let sha;
+    try {
+      sha = (await octokit.repos.getContents({
+        owner: "jhu-oose",
+        repo: `${process.env.COURSE}-staff`,
+        path
+      })).data.sha;
+    } catch {}
+    await octokit.repos.createOrUpdateFile({
+      owner: "jhu-oose",
+      repo: `${process.env.COURSE}-staff`,
+      path,
+      message: `Update feedback.md`,
+      content: render(`# Feedback
 
 # Lectures
 
@@ -750,7 +764,9 @@ ${plot(
 `
   )
   .join("\n")}
-`);
+`),
+      sha
+    });
   });
 
 program
