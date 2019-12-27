@@ -1,3 +1,5 @@
+# This is an archived version of https://github.com/jhu-oose/roboose that I (@leafac) developed when teaching the course in the Fall of 2019. Some of the links may be broken.
+
 # Roboose
 
 **The [Robot](https://github.com/apps/roboose) for [OOSE](https://www.jhu-oose.com)**
