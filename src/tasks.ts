@@ -653,6 +653,49 @@ ${feedbacks
 `;
   })
   .join("\n")}
+
+# Course
+
+**Would You Recommend the Course to a Friend?**
+
+${plot(feedbacks.get("10") || [], feedback => feedback.course.recommend, {
+  yes: "Yes",
+  no: "No"
+})}
+
+<details>
+<summary><strong>More Details</strong></summary>
+${(feedbacks.get("10") || [])
+  .map(
+    feedback => `<p><strong>At Least One Specific Thing That You Liked:</strong> ${feedback.course.liked}</p>
+
+<p><strong>At Least One Specific Thing That You Think Should Be Improved:</strong> ${feedback.course.improved}</p>
+
+<hr>
+`
+  )
+  .join("\n")}
+</details>
+
+**Were You Happy with the Support Provided by the Course Staff?**
+
+${plot(feedbacks.get("10") || [], feedback => feedback.course.staff.liked, {
+  yes: "Yes",
+  no: "No"
+})}
+
+<details>
+<summary><strong>More Details</strong></summary>
+${(feedbacks.get("10") || [])
+  .map(
+    feedback => `<p><strong>At Least One Specific Thing You Would Like to Say About the Support Provided by the Course Staff:</strong> ${feedback.course.staff["open-ended"]}</p>
+
+<hr>
+`
+  )
+  .join("\n")}
+</details>
+
 `);
   });
 
