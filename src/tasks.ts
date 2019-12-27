@@ -22,18 +22,30 @@ program
         owner: "jhu-oose",
         repo: "instructors"
       });
-      console.log("Roboose is ready to go!");
     } catch (error) {
       console.error(
         `Ooops, something is wrong with your installation: ${error}`
       );
+      process.exit(1);
     }
+    try {
+      await octokit.repos.get({
+        owner: "jhu-oose",
+        repo: `${process.env.COURSE}-staff`
+      });
+    } catch (error) {
+      console.error(
+        `Your installation seems to be working, but we can’t find the repository ${process.env.COURSE}-staff (maybe you need to run the init command?): ${error}`
+      );
+      process.exit(1);
+    }
+    console.log("Roboose is ready to go!");
   });
 
 program
   .command("init")
   .description(
-    "start the course by creating the teams and repositories for staff and students as well as the issues that serve as a database; you must paste the result of running this command into your .env file for other commands to work"
+    "start the course by creating the teams and repositories for staff and students as well as the issues that serve as a database"
   )
   .action(async () => {
     await octokit.teams.create({
@@ -92,6 +104,7 @@ program
       permission: "pull"
     });
 
+    const database: { [key: string]: number } = {};
     for (const title of [
       "Students",
       "Assignments",
@@ -108,10 +121,15 @@ program
       await octokit.issues.update({
         owner: "jhu-oose",
         repo: `${process.env.COURSE}-staff`,
-        issue_number: issue
+        issue_number: issue,
+        state: "closed"
       });
-      console.log(`ISSUE_${title.toUpperCase()}=${issue}`);
+      database[slugify(title)] = issue;
     }
+    await putStaffFile(
+      "configuration.json",
+      JSON.stringify({ database }, undefined, 2)
+    );
   });
 
 program
@@ -122,7 +140,7 @@ program
   .action(async () => {
     const { hopkinses } = await getConfiguration();
     const students = await getStudents();
-    const registrations = await getTable(Number(process.env.ISSUE_STUDENTS));
+    const registrations = await getTable("students");
     for (const { github, hopkins } of registrations) {
       if (
         registrations.some(
@@ -199,7 +217,9 @@ program
     )
       process.exit(0);
     console.log(
-      `You must manually remove the student data from https://github.com/jhu-oose/${process.env.COURSE}-staff/issues/${process.env.ISSUE_STUDENTS}`
+      `You must manually remove the student data from https://github.com/jhu-oose/${
+        process.env.COURSE
+      }-staff/issues/${await getTableIndex("students")}`
     );
     console.log(
       `You may need to cancel the invitation manually at https://github.com/orgs/jhu-oose/people if the student you’re deleting hasn’t accepted it yet (there’s no endpoint in the GitHub API to automate this)`
@@ -282,7 +302,7 @@ program
     await octokit.issues.createComment({
       owner: "jhu-oose",
       repo: `${process.env.COURSE}-staff`,
-      issue_number: Number(process.env.ISSUE_ASSIGNMENTS),
+      issue_number: await getTableIndex("assignments"),
       body: serialize(submission)
     });
     await octokit.issues.create({
@@ -770,7 +790,9 @@ program
     )
       process.exit(0);
     console.log(
-      `You must manually remove the group data from https://github.com/jhu-oose/${process.env.COURSE}-staff/issues/${process.env.ISSUE_GROUPS}`
+      `You must manually remove the group data from https://github.com/jhu-oose/${
+        process.env.COURSE
+      }-staff/issues/${await getTableIndex("groups")}`
     );
     try {
       await octokit.teams.delete({
@@ -836,7 +858,7 @@ program
       await octokit.issues.createComment({
         owner: "jhu-oose",
         repo: `${process.env.COURSE}-staff`,
-        issue_number: Number(process.env.ISSUE_ITERATIONS),
+        issue_number: await getTableIndex("iterations"),
         body: serialize(submission)
       });
       await octokit.issues.create({
@@ -858,9 +880,9 @@ program
   )
   .action(async iteration => {
     const { advisors } = await getConfiguration();
-    const submissions = (await getTable(
-      Number(process.env.ISSUE_ITERATIONS)
-    )).filter(submission => submission.iteration === iteration);
+    const submissions = (await getTable("iterations")).filter(
+      submission => submission.iteration === iteration
+    );
     const template = await getStaffFile(
       `templates/groups/iterations/${iteration}.md`
     );
@@ -950,7 +972,7 @@ program
     const gradesCounts = new Map<string, number>();
     const students = await getStudents();
     const groups = await getGroups();
-    const registrations = await getTable(Number(process.env.ISSUE_STUDENTS));
+    const registrations = await getTable("students");
     const studentsGroupMemberships = await getStudentsGroupMemberships();
     const assignments = await listStaffDirectory("grades/students/assignments");
     const iterations = await listStaffDirectory("grades/groups/iterations");
@@ -1272,19 +1294,23 @@ async function listStaffDirectory(path: string): Promise<string[]> {
   })).data.map((node: any) => node.name);
 }
 
-async function getTable(issueNumber: number): Promise<any[]> {
+async function getTableIndex(table: string): Promise<number> {
+  return (await getConfiguration()).database[table];
+}
+
+async function getTable(table: string): Promise<any[]> {
   return (await octokit.paginate(
     octokit.issues.listComments.endpoint.merge({
       owner: "jhu-oose",
       repo: `${process.env.COURSE}-staff`,
-      issue_number: issueNumber
+      issue_number: getTableIndex(table)
     })
   )).map(response => deserialize(response.body));
 }
 
 async function getAssignmentsSubmissions(): Promise<any[]> {
   const { assignmentsDueTimes } = await getConfiguration();
-  const allSubmissions = await getTable(Number(process.env.ISSUE_ASSIGNMENTS));
+  const allSubmissions = await getTable("assignments");
   const latestSubmissions = allSubmissions.filter(
     submission =>
       !allSubmissions.some(
@@ -1315,9 +1341,7 @@ async function getAssignmentsSubmissions(): Promise<any[]> {
 
 async function getFeedbacks(): Promise<Map<string, any[]>> {
   const feedbacks = new Map<string, any[]>();
-  for (const { assignment, feedback } of await getTable(
-    Number(process.env.ISSUE_FEEDBACKS)
-  )) {
+  for (const { assignment, feedback } of await getTable("feedbacks")) {
     if (!feedbacks.has(assignment)) feedbacks.set(assignment, new Array<any>());
     feedbacks.get(assignment)!.push(feedback);
   }
