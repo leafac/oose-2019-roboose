@@ -1057,7 +1057,9 @@ program
         [...studentsGrades.values()].filter(({ grade }) => grade === letter)
           .length
       );
-    console.log(`# Students
+    await putStaffFile(
+      "final-grades.md",
+      `# Students
 
 ${tabularize([...studentsGrades.values()], {
   GitHub: grade => grade.github,
@@ -1125,7 +1127,8 @@ ${tabularize([...studentsGrades.values()], {
   ID: grade => grade.hopkins,
   Grade: grade => grade.grade
 })}
-`);
+`
+    );
   });
 
 program
