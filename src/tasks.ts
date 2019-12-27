@@ -139,6 +139,7 @@ program
   )
   .action(async () => {
     const { hopkinses } = await getConfiguration();
+    console.log("Check the pending invitations at https://github.com/orgs/jhu-oose/people");
     const students = await getStudents();
     const registrations = await getTable("students");
     for (const { github, hopkins } of registrations) {
@@ -603,7 +604,9 @@ ${[...feedbacks.entries()]
 | | |
 |-|-|
 | Sum | ${sum(hours)} |
-| Mean | ${mean(hours)} |
+| Minimum | ${Math.min(...hours)} |
+| Median | ${median(hours)} |
+| Maximum | ${Math.max(...hours)} |
 | Average | ${average(hours)} |
 | Standard Deviation | ${standardDeviation(hours)} |
 
@@ -1722,7 +1725,7 @@ function sum(numbers: number[]): number {
   return numbers.reduce((a, b) => a + b, 0);
 }
 
-function mean(numbers: number[]): number {
+function median(numbers: number[]): number {
   return numbers.sort()[Math.floor(numbers.length / 2)];
 }
 
