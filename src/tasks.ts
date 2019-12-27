@@ -505,6 +505,7 @@ program
     "compile the feedback collected in the forms for assignment submission"
   )
   .action(async () => {
+    const { toolbox } = await getConfiguration();
     const feedbacks = await getFeedbacks();
     console.log(`# Feedback
 
@@ -654,7 +655,7 @@ ${feedbacks
   })
   .join("\n")}
 
-# Course
+# Course Overall
 
 **Would You Recommend the Course to a Friend?**
 
@@ -696,6 +697,59 @@ ${(feedbacks.get("10") || [])
   .join("\n")}
 </details>
 
+# Toolbox
+
+${toolbox
+  .map(
+    (tool: string) => `## ${tool}
+
+**Beginning of Course**
+
+${plot(
+  feedbacks.get("0") || [],
+  feedback => feedback.toolbox[slugifyJekyll(tool)].experience,
+  {
+    "never-heard": "I’ve **never heard** of it.",
+    "heard-of": "I’ve **only heard of** it, or have **used it only a little**.",
+    comfortable: "I’m **comfortable** with it."
+  }
+)}
+
+${plot(
+  feedbacks.get("0") || [],
+  feedback => feedback.toolbox[slugifyJekyll(tool)].taste,
+  {
+    dread: "I **dread** it.",
+    indifferent: "I’m **indifferent** to it.",
+    like: "I **like** it."
+  }
+)}
+
+**End of Course**
+
+${plot(
+  feedbacks.get("10") || [],
+  feedback => feedback.toolbox[slugifyJekyll(tool)].learned,
+  {
+    "already-comfortable":
+      "I was **already comfortable** with it before the course.",
+    "became-comfortable": "I **became comfortable** with it in the course.",
+    "still-know-little": "I **still know little** about it."
+  }
+)}
+
+${plot(
+  feedbacks.get("10") || [],
+  feedback => feedback.toolbox[slugifyJekyll(tool)].taste,
+  {
+    dread: "I **dread** it.",
+    indifferent: "I’m **indifferent** to it.",
+    like: "I **like** it."
+  }
+)}
+`
+  )
+  .join("\n")}
 `);
   });
 
@@ -1613,6 +1667,10 @@ function slugify(string: string): string {
     .toLowerCase()
     .replace(/ /g, "-")
     .replace(/[^a-z0-9\-]/g, "");
+}
+
+function slugifyJekyll(string: string): string {
+  return slugify(string).replace(/-+/g, "-");
 }
 
 function sum(numbers: number[]): number {
