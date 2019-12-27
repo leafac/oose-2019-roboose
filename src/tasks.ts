@@ -500,28 +500,16 @@ program
   });
 
 program
-  .command("feedbacks:compile")
+  .command("feedbacks")
   .description(
-    "compile the feedback collected in the forms for assignment submission"
+    "compile the feedback collected in the forms for assignment submission and put them in the staff repository under feedback.md"
   )
   .action(async () => {
     const { toolbox } = await getConfiguration();
     const feedbacks = await getFeedbacks();
-    const path = "feedback.md";
-    let sha;
-    try {
-      sha = (await octokit.repos.getContents({
-        owner: "jhu-oose",
-        repo: `${process.env.COURSE}-staff`,
-        path
-      })).data.sha;
-    } catch {}
-    await octokit.repos.createOrUpdateFile({
-      owner: "jhu-oose",
-      repo: `${process.env.COURSE}-staff`,
-      path,
-      message: `Update feedback.md`,
-      content: render(`# Feedback
+    await putStaffFile(
+      "feedback.md",
+      `# Feedback
 
 # Lectures
 
@@ -764,9 +752,8 @@ ${plot(
 `
   )
   .join("\n")}
-`),
-      sha
-    });
+`
+    );
   });
 
 program
@@ -947,7 +934,7 @@ ${footer(`jhu-oose/${process.env.COURSE}-group-${slugify(github)}`)}
 program
   .command("final-grades")
   .description(
-    "compute the final grades taking in account individual assignments, the quiz, group project iterations, and individual point adjustments (either for extra credit or because of outstanding good or bad performance on the group project)"
+    "compute the final grades taking in account individual assignments, the quiz, group project iterations, and individual point adjustments (either for extra credit or because of outstanding good or bad performance on the group project), and put it in the staff repository under final-grades.md"
   )
   .action(async () => {
     const {
@@ -1253,6 +1240,25 @@ async function getStaffFile(path: string): Promise<string> {
     })).data.content,
     "base64"
   ).toString();
+}
+
+async function putStaffFile(path: string, content: string): Promise<void> {
+  let sha;
+  try {
+    sha = (await octokit.repos.getContents({
+      owner: "jhu-oose",
+      repo: `${process.env.COURSE}-staff`,
+      path
+    })).data.sha;
+  } catch {}
+  await octokit.repos.createOrUpdateFile({
+    owner: "jhu-oose",
+    repo: `${process.env.COURSE}-staff`,
+    path,
+    message: `Update ${path}`,
+    content: render(content),
+    sha
+  });
 }
 
 async function listStaffDirectory(path: string): Promise<string[]> {
