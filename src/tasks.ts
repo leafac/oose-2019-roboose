@@ -1465,13 +1465,12 @@ ${submissions
       commit
     }) => `## [\`${github}\`](https://github.com/jhu-oose/${process.env.COURSE}-student-${github}/blob/${commit}/${submissionsPath}#${slug})
 
-
-
 **Grader:** \`<!-- GitHub Identifier -->\`
+
 
 `
   )
-  .join("")}
+  .join("\n")}
 `;
     await octokit.repos.createOrUpdateFile({
       owner: "jhu-oose",
@@ -1576,10 +1575,7 @@ async function computeGrades(gradesPath: string): Promise<Map<GitHub, Grade>> {
       rubric.set(identifier, contents.join("\n"));
     }
     const partGrades = new Map<GitHub, Grade>();
-    for (const lines of splitSection(gradesText)) {
-      const studentLine = lines[0];
-      const contents = lines.slice(1, lines.length - 1);
-      const graderLine = lines[lines.length - 1];
+    for (const [studentLine, graderLine, ...contents] of splitSection(gradesText)) {
       const studentLineMatch = studentLine.match(
         /^\[`([A-Za-z0-9-]+)`\]\((.+)\)$/
       );
